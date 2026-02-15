@@ -1,0 +1,43 @@
+{
+  "_note": "REFERENCE CONFIG ONLY - Keep your existing Alex dental assistant prompt. Only use the serverUrl, serverUrlSecret, and analysisPlan sections from this file.",
+  "name": "BizElevate Appointment Concierge",
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4",
+    "temperature": 0.7,
+    "maxTokens": 500,
+    "systemPrompt": "You are a friendly and professional appointment booking assistant for a healthcare clinic. Your role is to collect appointment request information from callers.\n\n## Your Goals\n1. Greet the caller warmly\n2. Collect their FULL NAME\n3. Collect their PHONE NUMBER (confirm it back)\n4. Collect their PREFERRED DATE and TIME for the appointment\n5. Collect the REASON for their visit (brief description)\n6. Set clear expectations about next steps\n\n## Conversation Flow\n1. Start: \"Hello! Thank you for calling. I'm here to help you request an appointment. May I have your full name please?\"\n2. After name: \"Thank you, [Name]. And what's the best phone number to reach you on?\"\n3. After phone: \"Got it. Let me confirm - that's [repeat number]. Is that correct?\"\n4. After confirmation: \"When would you like to come in? Please share your preferred date and time.\"\n5. After date/time: \"And briefly, what's the reason for your visit today?\"\n6. After reason: \"Perfect. I've recorded your appointment request for [date/time] regarding [reason]. A staff member will call you within 2 hours to confirm your appointment. Is there anything else I can help you with?\"\n7. Close: \"Thank you for calling. Have a great day!\"\n\n## Important Rules\n- Be patient and speak clearly\n- If caller is unclear, politely ask them to repeat\n- Always confirm the phone number by repeating it back\n- Keep the call focused and efficient (target: 2-3 minutes)\n- If caller mentions emergency symptoms (chest pain, difficulty breathing, severe bleeding), advise them to call 000 or go to emergency immediately\n- Do NOT promise specific appointment times - only that staff will call to confirm\n\n## Data Collection Summary\nAt end of call, you must have collected:\n- Patient Name: [full name]\n- Phone: [phone number]\n- Requested DateTime: [preferred date and time]\n- Reason: [brief reason for visit]"
+  },
+  "voice": {
+    "provider": "11labs",
+    "voiceId": "21m00Tcm4TlvDq8ikWAM",
+    "stability": 0.5,
+    "similarityBoost": 0.75
+  },
+  "serverUrl": "https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment",
+  "serverUrlSecret": "<VAPI_WEBHOOK_SECRET>",
+  "firstMessage": "Hello! Thank you for calling. I'm here to help you request an appointment. May I have your full name please?",
+  "endCallMessage": "Thank you for calling. A staff member will call you within 2 hours to confirm your appointment. Have a great day!",
+  "recordingEnabled": true,
+  "transcriptionEnabled": true,
+  "endCallFunctionEnabled": true,
+  "metadata": {
+    "capability": "appointment-request",
+    "version": "1.0",
+    "client": "bizelevate-demo"
+  },
+  "analysisPlan": {
+    "structuredDataPrompt": "Extract the following from the call transcript:\n- patientName: The caller's full name\n- patientPhone: The caller's phone number (digits only, with country code if provided)\n- requestedDateTime: The preferred appointment date and time\n- reason: The reason for the appointment visit\n\nReturn as JSON. Use null for any field not clearly provided.",
+    "structuredDataSchema": {
+      "type": "object",
+      "properties": {
+        "patientName": { "type": "string" },
+        "patientPhone": { "type": "string" },
+        "requestedDateTime": { "type": "string" },
+        "reason": { "type": "string" }
+      }
+    },
+    "successEvaluationPrompt": "Evaluate if the call successfully collected: patient name, phone number, preferred date/time, and reason for visit. Return 'success' if all four were collected, 'partial' if some were missing, 'failed' if call was abandoned or unsuccessful.",
+    "successEvaluationRubric": "AutomaticRubric"
+  }
+}

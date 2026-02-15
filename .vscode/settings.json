@@ -1,0 +1,32 @@
+{
+  "claudeCode.workspace.root": "${workspaceFolder}",
+  "claudeCode.agents.enabled": true,
+  "claudeCode.mcp.enabled": true,
+  "claudeCode.mcp.servers": [
+    "claude-vscode"
+  ],
+  "claudeCode.context.includeGitHistory": false,
+  "claudeCode.context.maxContextSize": 100000,
+  "claudeCode.agentic.parallelExecution": true,
+  "claudeCode.agentic.maxConcurrentAgents": 3,
+  "files.exclude": {
+    "**/.git": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    "**/.venv": true,
+    "**/venv": true
+  },
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/node_modules/**": true,
+    "**/.venv/**": true,
+    "**/venv/**": true
+  },
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  }
+}

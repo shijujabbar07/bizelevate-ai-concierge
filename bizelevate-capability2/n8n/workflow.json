@@ -1,0 +1,340 @@
+{
+  "name": "BizElevate - Appointment Request Concierge (MCP)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi-appointment",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-vapi",
+      "name": "VAPI Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "vapi-appointment"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={\n  \"eventType\": \"{{ $json.body?.message?.type || $json.message?.type || 'unknown' }}\",\n  \"callId\": \"{{ $json.body?.message?.call?.id || $json.message?.call?.id || 'unknown' }}\",\n  \"callStatus\": \"{{ $json.body?.message?.call?.status || $json.message?.call?.status || 'unknown' }}\",\n  \"customerPhone\": \"{{ $json.body?.message?.call?.customer?.number || $json.message?.call?.customer?.number || '' }}\",\n  \"transcript\": \"{{ $json.body?.message?.transcript || $json.message?.transcript || '' }}\",\n  \"patientName\": \"{{ $json.body?.message?.analysis?.structuredData?.patientName || $json.message?.analysis?.structuredData?.patientName || '' }}\",\n  \"patientPhone\": \"{{ $json.body?.message?.analysis?.structuredData?.patientPhone || $json.message?.analysis?.structuredData?.patientPhone || '' }}\",\n  \"requestedDateTime\": \"{{ $json.body?.message?.analysis?.structuredData?.requestedDateTime || $json.message?.analysis?.structuredData?.requestedDateTime || '' }}\",\n  \"reason\": \"{{ $json.body?.message?.analysis?.structuredData?.reason || $json.message?.analysis?.structuredData?.reason || '' }}\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "id": "normalize-payload",
+      "name": "Normalize VAPI Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this VAPI webhook event and decide how to process it.\n\n**Event Data:**\n- Event Type: {{ $json.eventType }}\n- Call ID: {{ $json.callId }}\n- Patient Name: {{ $json.patientName || 'Not provided' }}\n- Patient Phone: {{ $json.patientPhone || $json.customerPhone || 'Not provided' }}\n- Requested DateTime: {{ $json.requestedDateTime || 'Not provided' }}\n- Reason: {{ $json.reason || 'Not provided' }}\n- Customer Phone (caller ID): {{ $json.customerPhone }}\n- Timestamp: {{ $json.timestamp }}\n\nAnalyze and return your decision as JSON.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are the BizElevate Appointment Concierge Agent. Analyze VAPI webhook events and return structured decisions.\n\n## Your Task\nAnalyze the event and return a JSON decision object.\n\n## Decision Rules\n\n### For eventType = \"end-of-call-report\"\nThis is a completed call. You must:\n1. Determine the action: \"process_appointment\"\n2. Classify urgency based on the reason:\n   - \"emergency\": chest pain, difficulty breathing, severe bleeding, stroke symptoms, loss of consciousness\n   - \"urgent\": fever, infection, moderate pain, worsening symptoms, same-day needs\n   - \"routine\": check-ups, follow-ups, vaccinations, preventive care, general appointments\n3. Clean up the data (use defaults for missing fields)\n\n### For any other eventType\nReturn action: \"acknowledge_only\"\n\n## Data Defaults\n- If patientName is empty: use \"Unknown Patient\"\n- If patientPhone is empty: use customerPhone\n- If requestedDateTime is empty: use \"To be confirmed\"\n- If reason is empty: use \"General appointment\"\n\n## Response Format\nAlways return valid JSON with these fields:\n{\n  \"action\": \"process_appointment\" or \"acknowledge_only\",\n  \"eventType\": \"the event type\",\n  \"callId\": \"the call ID\",\n  \"patientName\": \"cleaned patient name\",\n  \"patientPhone\": \"cleaned phone number\",\n  \"patientFirstName\": \"first name only for SMS greeting\",\n  \"requestedDateTime\": \"cleaned datetime\",\n  \"reason\": \"cleaned reason\",\n  \"urgency\": \"routine\", \"urgent\", or \"emergency\",\n  \"timestamp\": \"the timestamp\",\n  \"message\": \"brief status message\"\n}"
+        }
+      },
+      "id": "decision-agent",
+      "name": "Decision Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "openai-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [690, 520],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"action\": \"process_appointment\",\n  \"eventType\": \"end-of-call-report\",\n  \"callId\": \"call_123\",\n  \"patientName\": \"John Smith\",\n  \"patientPhone\": \"+61412345678\",\n  \"patientFirstName\": \"John\",\n  \"requestedDateTime\": \"Tuesday 10am\",\n  \"reason\": \"Annual check-up\",\n  \"urgency\": \"routine\",\n  \"timestamp\": \"2024-01-15T10:00:00.000Z\",\n  \"message\": \"Appointment request ready to process\"\n}"
+      },
+      "id": "output-parser",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [810, 520]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-action",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "process_appointment",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-decision",
+      "name": "Route by Decision",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1hUBJx6sq3Yx60JKcBQ3yin-n1xp_Hgh0ANjEwkwPq08"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "Appointments"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.timestamp }}",
+            "Call ID": "={{ $json.callId }}",
+            "Patient Name": "={{ $json.patientName }}",
+            "Phone": "={{ $json.patientPhone }}",
+            "Requested Date/Time": "={{ $json.requestedDateTime }}",
+            "Reason": "={{ $json.reason }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Status": "new",
+            "Notes": ""
+          },
+          "matchingColumns": [],
+          "schema": [
+            {"id": "Timestamp", "displayName": "Timestamp", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string"},
+            {"id": "Call ID", "displayName": "Call ID", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string"},
+            {"id": "Patient Name", "displayName": "Patient Name", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string"},
+            {"id": "Phone", "displayName": "Phone", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string"},
+            {"id": "Requested Date/Time", "displayName": "Requested Date/Time", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string"},
+            {"id": "Reason", "displayName": "Reason", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string"},
+            {"id": "Urgency", "displayName": "Urgency", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string"},
+            {"id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string"},
+            {"id": "Notes", "displayName": "Notes", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string"}
+          ]
+        },
+        "options": {}
+      },
+      "id": "save-to-sheets",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1130, 200],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "google-sheets-credentials",
+          "name": "Google Sheets OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/<TWILIO_ACCOUNT_SID>/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "+61485004338"
+            },
+            {
+              "name": "To",
+              "value": "={{ $('Route by Decision').item.json.patientPhone }}"
+            },
+            {
+              "name": "Body",
+              "value": "=Hi {{ $('Route by Decision').item.json.patientFirstName }}, thanks for calling. We received your appointment request for {{ $('Route by Decision').item.json.requestedDateTime }}. A team member will call you within 2 hours to confirm. Reply STOP to opt out."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms",
+      "name": "Send Patient SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1350, 200],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "twilio-basic-auth",
+          "name": "Twilio Basic Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"action\": \"{{ $('Route by Decision').item.json.action }}\",\n  \"callId\": \"{{ $('Route by Decision').item.json.callId }}\",\n  \"patientName\": \"{{ $('Route by Decision').item.json.patientName }}\",\n  \"urgency\": \"{{ $('Route by Decision').item.json.urgency }}\",\n  \"message\": \"Appointment request processed, SMS sent\",\n  \"timestamp\": \"{{ $('Route by Decision').item.json.timestamp }}\"\n}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1570, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"action\": \"acknowledged\",\n  \"eventType\": \"{{ $json.eventType }}\",\n  \"callId\": \"{{ $json.callId }}\",\n  \"message\": \"{{ $json.message }}\"\n}",
+        "options": {}
+      },
+      "id": "respond-acknowledge",
+      "name": "Respond Acknowledge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1130, 400]
+    }
+  ],
+  "connections": {
+    "VAPI Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize VAPI Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize VAPI Payload": {
+      "main": [
+        [
+          {
+            "node": "Decision Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Decision Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Decision Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decision Agent": {
+      "main": [
+        [
+          {
+            "node": "Route by Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Decision": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Acknowledge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send Patient SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Patient SMS": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "BizElevate",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "Capability-2",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "MCP-Architecture",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 0,
+  "versionId": "4"
+}

@@ -1,0 +1,32 @@
+{
+  "agents": {
+    "enabled": true,
+    "defaultAgent": "main"
+  },
+  "workspace": {
+    "root": ".",
+    "maxContextSize": 100000,
+    "excludePatterns": [
+      "node_modules",
+      ".git",
+      "dist",
+      "build",
+      "__pycache__",
+      "*.pyc",
+      ".venv",
+      "venv"
+    ]
+  },
+  "tools": {
+    "enabled": true,
+    "mcp": {
+      "enabled": true,
+      "servers": ["claude-vscode"]
+    }
+  },
+  "agentic": {
+    "parallelExecution": true,
+    "maxConcurrentAgents": 3,
+    "taskCoordination": "auto"
+  }
+}

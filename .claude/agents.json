@@ -1,0 +1,59 @@
+{
+  "agents": [
+    {
+      "id": "main",
+      "name": "Main Coordinator Agent",
+      "model": "claude-sonnet-4-5",
+      "role": "Primary agent for task coordination and execution",
+      "tools": {
+        "bash": true,
+        "textEditor": true,
+        "codeExecution": true,
+        "webSearch": true,
+        "fileSystem": true
+      },
+      "capabilities": [
+        "task-planning",
+        "code-generation",
+        "debugging",
+        "testing"
+      ]
+    },
+    {
+      "id": "researcher",
+      "name": "Research Agent",
+      "model": "claude-sonnet-4-5",
+      "role": "Specialized in code exploration and documentation research",
+      "tools": {
+        "bash": true,
+        "textEditor": false,
+        "codeExecution": false,
+        "webSearch": true,
+        "fileSystem": true
+      },
+      "capabilities": [
+        "code-exploration",
+        "documentation-analysis",
+        "pattern-discovery"
+      ]
+    },
+    {
+      "id": "tester",
+      "name": "Testing Agent",
+      "model": "claude-sonnet-4-5",
+      "role": "Specialized in running tests and validating functionality",
+      "tools": {
+        "bash": true,
+        "textEditor": false,
+        "codeExecution": true,
+        "webSearch": false,
+        "fileSystem": true
+      },
+      "capabilities": [
+        "test-execution",
+        "validation",
+        "quality-assurance"
+      ]
+    }
+  ]
+}
