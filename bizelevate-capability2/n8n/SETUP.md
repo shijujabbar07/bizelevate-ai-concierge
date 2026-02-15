@@ -5,6 +5,10 @@ Import and configure the Appointment Request Concierge workflow in n8n Cloud.
 
 **Estimated Time:** 15-20 minutes
 
+> **Secrets:** This file uses `<PLACEHOLDER>` tokens. Real values go in n8n
+> credential UI or your local `.env` / `secrets.local.json`. See `docs/README.md`
+> for the full secrets quickstart.
+
 ---
 
 ## Prerequisites

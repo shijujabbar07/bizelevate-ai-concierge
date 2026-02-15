@@ -111,7 +111,12 @@ If uncertain whether logic belongs in n8n or MCP:
 ## Workspace Structure
 
 ClaudeCode/
-├── .mcp.json              # MCP server connections (n8n-mcp, future servers)
+├── .mcp.json              # MCP server template — placeholders only (committed)
+├── .mcp.local.json        # Real MCP config with secrets (gitignored)
+├── .env.example           # Env var names — no values (committed)
+├── .env                   # Real env values (gitignored)
+├── secrets.schema.json    # Schema for secrets.local.json (committed)
+├── secrets.local.json     # Real secrets file (gitignored)
 ├── .claude/               # Claude Code configuration
 ├── agents/                # Custom agent definitions
 ├── concierge/             # AI Concierge patterns
@@ -242,6 +247,11 @@ and live workflow management via MCP.
 
 Get your API key from n8n → Settings → API → Create API Key.
 
+> **Local override:** The committed `.mcp.json` contains **placeholders only**.
+> Copy it to `.mcp.local.json` (gitignored), fill in real values, and point
+> Claude Code at the local file when running locally.
+> Never commit real keys to `.mcp.json`.
+
 ### Available Tools (20 total)
 
 **Documentation & Discovery (always available, no API key needed)**
@@ -346,6 +356,41 @@ When using n8n templates or skill patterns in BizElevate workflows:
 4. **Validate the adapted workflow** — Run `n8n_validate_workflow` after changes
 5. **Confirm tier alignment** — Check that every MCP tool used is available in the
    target product tier (Starter / Pro / Elite)
+
+---
+
+## Local Secrets Management
+
+**No real secrets in committed files.** All tracked files use `<PLACEHOLDER>` tokens.
+
+### File Layout
+
+| File | Committed? | Purpose |
+|------|-----------|---------|
+| `.mcp.json` | Yes | MCP server template with placeholders |
+| `.mcp.local.json` | **No** (gitignored) | Real MCP config with actual keys |
+| `.env.example` | Yes | Lists required env var names |
+| `.env` | **No** (gitignored) | Real env values for local use |
+| `secrets.schema.json` | Yes | JSON Schema describing `secrets.local.json` |
+| `secrets.local.json` | **No** (gitignored) | Runtime secrets (VAPI, Twilio, n8n keys) |
+
+### Required Secrets
+
+| Variable | Where to get it | Where it's used |
+|----------|----------------|-----------------|
+| `VAPI_WEBHOOK_SECRET` | VAPI Dashboard → Assistant → Server URL Secret | n8n webhook header auth, VAPI config |
+| `N8N_API_KEY` | n8n → Settings → API → Create API Key | `.mcp.local.json` for Claude Code n8n-mcp |
+| `TWILIO_ACCOUNT_SID` | Twilio Console → Account Info | n8n Twilio SMS node (HTTP Basic Auth user) |
+| `TWILIO_AUTH_TOKEN` | Twilio Console → Account Info | n8n Twilio SMS node (HTTP Basic Auth password) |
+
+### If Secrets Were Previously Committed
+
+Secrets have been removed from tracked files and replaced with placeholders.
+If this repo was ever pushed with real values, **rotate all affected credentials**:
+
+1. **VAPI:** Dashboard → Assistant → regenerate Server URL Secret
+2. **Twilio:** Console → Account → Auth Token → rotate
+3. **n8n:** Settings → API → delete and create new API key
 
 ---
 

@@ -7,6 +7,10 @@ Configure your existing VAPI assistant to send appointment data to the n8n workf
 
 **Important:** Keep your existing system prompt (Alex dental assistant). This guide only covers webhook integration settings.
 
+> **Secrets:** This file uses `<PLACEHOLDER>` tokens for secrets like the webhook
+> secret. Real values are configured in the VAPI Dashboard, not stored in this repo.
+> See `docs/README.md` for the full secrets quickstart.
+
 ---
 
 ## Prerequisites

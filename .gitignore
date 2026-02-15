@@ -32,10 +32,12 @@ desktop.ini
 *.log
 logs/
 
-# Environment
+# Environment & local secrets
 .env
 .env.local
 .env.*.local
+.mcp.local.json
+secrets.local.json
 
 # Temporary files
 *.tmp

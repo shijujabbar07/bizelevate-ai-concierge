@@ -5,6 +5,10 @@ Complete step-by-step checklist to deploy the Appointment Request Concierge demo
 
 **Total Estimated Time:** 30-45 minutes
 
+> **Secrets:** All credential values in this file are `<PLACEHOLDER>` tokens.
+> Get real values from your VAPI Dashboard, Twilio Console, and n8n Settings.
+> See `docs/README.md` for the full secrets quickstart.
+
 ---
 
 ## Pre-Flight Checklist
