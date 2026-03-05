@@ -1,4 +1,4 @@
-# BizElevate Capability 2: Appointment Request Concierge
+# BizElevate Appointment Concierge
 
 ## Overview
 
@@ -48,7 +48,7 @@ An AI-powered voice assistant that handles inbound appointment requests, classif
 ## File Structure
 
 ```
-bizelevate-capability2/
+appointment-concierge/
 ├── vapi/
 │   ├── assistant-config.json    # VAPI assistant settings & prompts
 │   └── SETUP.md                 # VAPI configuration guide

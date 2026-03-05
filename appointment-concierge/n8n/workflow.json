@@ -1,0 +1,1008 @@
+{
+  "name": "BizElevate - Appointment Request Concierge (MCP)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "vapi-appointment",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "id": "webhook-vapi",
+      "name": "VAPI Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        350
+      ],
+      "webhookId": "vapi-appointment",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Ck4d0aQ25lXWswrJ",
+          "name": "VAPI Webhook Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-tool-calls-type",
+              "leftValue": "={{ $json.body?.message?.type || $json.message?.type || '' }}",
+              "rightValue": "tool-calls",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-message-type",
+      "name": "Route by Message Type",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        220,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nconst message = body.message || {};\nconst toolCall = (message.toolCalls || [])[0] || {};\nconst call = message.call || {};\n\nlet toolArgs = {};\ntry {\n  toolArgs = JSON.parse(toolCall.function?.arguments || '{}');\n} catch (e) {\n  toolArgs = {};\n}\n\nreturn [{\n  json: {\n    toolCallId: toolCall.id || 'unknown',\n    toolName: toolCall.function?.name || 'unknown',\n    toolArgs,\n    callId: call.id || 'unknown',\n    customerPhone: call.customer?.number || '',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "extract-tool-call",
+      "name": "Extract Tool Call",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-availability-route",
+              "leftValue": "={{ $json.toolName }}",
+              "rightValue": "check_availability",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-check-availability",
+      "name": "Route - Check Availability",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        660,
+        50
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const toolCallId = $input.item.json.toolCallId;\nconst args = $input.item.json.toolArgs || {};\nconst date = args.date || 'your requested date';\nconst time = args.time || 'your requested time';\n\nreturn [{\n  json: {\n    results: [{\n      toolCallId: toolCallId,\n      result: `I've noted your preference for ${date} at ${time}. Our team will contact you to confirm the exact slot. Would you like me to save your details now so we can reach you?`\n    }]\n  }\n}];"
+      },
+      "id": "handle-check-availability",
+      "name": "Handle Check Availability",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "save-intake-route",
+              "leftValue": "={{ $json.toolName }}",
+              "rightValue": "save_intake",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-save-intake",
+      "name": "Route - Save Intake",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1hUBJx6sq3Yx60JKcBQ3yin-n1xp_Hgh0ANjEwkwPq08"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0",
+          "cachedResultName": "Appointments"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.timestamp }}",
+            "Call ID": "={{ $json.callId }}",
+            "Patient Name": "={{ $json.toolArgs?.patientName || 'Unknown Patient' }}",
+            "Phone": "={{ $json.toolArgs?.patientPhone || $json.customerPhone || 'Unknown' }}",
+            "Requested Date/Time": "={{ $json.toolArgs?.requestedDateTime || 'To be confirmed' }}",
+            "Reason": "={{ $json.toolArgs?.reason || 'General appointment' }}",
+            "Urgency": "pending",
+            "Status": "intake-in-progress",
+            "Notes": "Captured during call"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Call ID",
+              "displayName": "Call ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Patient Name",
+              "displayName": "Patient Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Requested Date/Time",
+              "displayName": "Requested Date/Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "handle-save-intake",
+      "name": "Handle Save Intake",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1100,
+        100
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "djBmxfLZ2tr7uYSn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const toolCallId = $('Extract Tool Call').first().json.toolCallId;\nreturn [{\n  json: {\n    results: [{\n      toolCallId: toolCallId,\n      result: \"Perfect, I've saved your appointment request details. A staff member will call you within 2 hours to confirm.\"\n    }]\n  }\n}];"
+      },
+      "id": "handle-save-intake-respond",
+      "name": "Handle Save Intake Respond",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const toolCallId = $input.item.json.toolCallId;\nreturn [{\n  json: {\n    results: [{\n      toolCallId: toolCallId,\n      result: \"I'm unable to process that request right now. Please let me know how else I can help you.\"\n    }]\n  }\n}];"
+      },
+      "id": "handle-unknown-tool",
+      "name": "Handle Unknown Tool",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "respond-tool-result",
+      "name": "Respond Tool Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1540,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-end-of-call",
+              "leftValue": "={{ $json.body?.message?.type || $json.message?.type || '' }}",
+              "rightValue": "end-of-call-report",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-end-of-call",
+      "name": "Route - End of Call",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"received\": true }",
+        "options": {}
+      },
+      "id": "respond-fast-ack",
+      "name": "Respond Fast Ack",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Use a Code node to safely extract the transcript.\n// Raw JSON Set mode breaks when the transcript contains newlines or quotes.\nconst body = $input.item.json.body || $input.item.json;\nconst message = body.message || {};\nconst call = message.call || {};\nconst structuredData = message.analysis?.structuredData || {};\n\nreturn [{\n  json: {\n    eventType: message.type || 'unknown',\n    callId: call.id || 'unknown',\n    callStatus: call.status || 'unknown',\n    customerPhone: call.customer?.number || '',\n    transcript: message.transcript || '',\n    patientName: structuredData.patientName || '',\n    patientPhone: structuredData.patientPhone || '',\n    requestedDateTime: structuredData.requestedDateTime || '',\n    reason: structuredData.reason || structuredData.appointmentReason || '',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "normalize-payload",
+      "name": "Normalize VAPI Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze this VAPI webhook event and decide how to process it.\n\n**Event Data:**\n- Event Type: {{ $json.eventType }}\n- Call ID: {{ $json.callId }}\n- Patient Name: {{ $json.patientName || 'Not provided' }}\n- Patient Phone: {{ $json.patientPhone || $json.customerPhone || 'Not provided' }}\n- Requested DateTime: {{ $json.requestedDateTime || 'Not provided' }}\n- Reason: {{ $json.reason || 'Not provided' }}\n- Customer Phone (caller ID): {{ $json.customerPhone }}\n- Timestamp: {{ $json.timestamp }}\n\n**Call Transcript:**\n{{ $json.transcript || 'No transcript available' }}\n\nIf any patient fields above show 'Not provided', extract the correct values from the transcript before returning your decision.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are the BizElevate Appointment Concierge Agent. Analyze VAPI webhook events and return structured decisions.\n\n## Your Task\nAnalyze the event and return a JSON decision object.\n\n## Decision Rules\n\n### For eventType = \"end-of-call-report\"\nThis is a completed call. You must:\n1. Determine the action: \"process_appointment\"\n2. Extract patient data — first from the structured fields, then from the transcript if any field is missing or empty\n3. Classify urgency based on the reason:\n   - \"emergency\": chest pain, difficulty breathing, severe bleeding, stroke symptoms, loss of consciousness\n   - \"urgent\": fever, infection, moderate pain, worsening symptoms, same-day needs\n   - \"routine\": check-ups, follow-ups, vaccinations, preventive care, general appointments\n\n### For any other eventType\nReturn action: \"acknowledge_only\"\n\n## Data Extraction Priority\nFor each field, use the first available source:\n1. Structured field (patientName, patientPhone, etc.) if non-empty\n2. Extract from the transcript text\n3. Fall back to default value\n\n## Data Defaults (last resort only)\n- patientName → \"Unknown Patient\"\n- patientPhone → customerPhone value, or \"Unknown\"\n- requestedDateTime → \"To be confirmed\"\n- reason → \"General appointment\"\n\n## Response Format\nAlways return valid JSON with these exact fields:\n{\n  \"action\": \"process_appointment\" or \"acknowledge_only\",\n  \"eventType\": \"the event type\",\n  \"callId\": \"the call ID\",\n  \"patientName\": \"full name extracted from transcript or field\",\n  \"patientPhone\": \"phone number extracted from transcript or field\",\n  \"patientFirstName\": \"first name only, for SMS greeting\",\n  \"requestedDateTime\": \"preferred time extracted from transcript or field\",\n  \"reason\": \"reason for visit extracted from transcript or field\",\n  \"urgency\": \"routine\", \"urgent\", or \"emergency\",\n  \"timestamp\": \"the timestamp\",\n  \"message\": \"brief status message\"\n}"
+        }
+      },
+      "id": "decision-agent",
+      "name": "Decision Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        660,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "openai-model",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        660,
+        750
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "0WYhIRpuxxCXNvs3",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"action\": \"process_appointment\",\n  \"eventType\": \"end-of-call-report\",\n  \"callId\": \"call_123\",\n  \"patientName\": \"John Smith\",\n  \"patientPhone\": \"+61412345678\",\n  \"patientFirstName\": \"John\",\n  \"requestedDateTime\": \"Tuesday 10am\",\n  \"reason\": \"Annual check-up\",\n  \"urgency\": \"routine\",\n  \"timestamp\": \"2024-01-15T10:00:00.000Z\",\n  \"message\": \"Appointment request ready to process\"\n}"
+      },
+      "id": "output-parser",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        790,
+        750
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-action",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "process_appointment",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-decision",
+      "name": "Route by Decision",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        880,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "1hUBJx6sq3Yx60JKcBQ3yin-n1xp_Hgh0ANjEwkwPq08"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "id",
+          "value": "0",
+          "cachedResultName": "Appointments"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.timestamp }}",
+            "Call ID": "={{ $json.callId }}",
+            "Patient Name": "={{ $json.patientName }}",
+            "Phone": "={{ $json.patientPhone }}",
+            "Requested Date/Time": "={{ $json.requestedDateTime }}",
+            "Reason": "={{ $json.reason }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Status": "new",
+            "Notes": ""
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Call ID",
+              "displayName": "Call ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Patient Name",
+              "displayName": "Patient Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Requested Date/Time",
+              "displayName": "Requested Date/Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Reason",
+              "displayName": "Reason",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Urgency",
+              "displayName": "Urgency",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "save-to-sheets",
+      "name": "Save to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1100,
+        450
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "djBmxfLZ2tr7uYSn",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "check-phone-valid",
+              "leftValue": "={{ $json.patientPhone }}",
+              "rightValue": "^(\\+?614|04)\\d{8}$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "validate-phone",
+      "name": "Phone Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"action\": \"{{ $json.action }}\",\n  \"callId\": \"{{ $json.callId }}\",\n  \"patientName\": \"{{ $json.patientName }}\",\n  \"urgency\": \"{{ $json.urgency }}\",\n  \"message\": \"Call recorded — SMS skipped: no valid Australian mobile number collected\",\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}",
+        "options": {}
+      },
+      "id": "respond-no-sms",
+      "name": "Respond No SMS",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1540,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/AC907df5d9b5370eb5dd779a5b77754374/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "+61485004338"
+            },
+            {
+              "name": "To",
+              "value": "={{ $('Route by Decision').item.json.patientPhone }}"
+            },
+            {
+              "name": "Body",
+              "value": "=Hi {{ $('Route by Decision').item.json.patientFirstName }}, thanks for calling. We received your appointment request for {{ $('Route by Decision').item.json.requestedDateTime }}. A team member will call you within 2 hours to confirm. Reply STOP to opt out."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms",
+      "name": "Send Patient SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        450
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Vpy229UTG1RYrPP0",
+          "name": "Twilio Basic Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"action\": \"{{ $('Route by Decision').item.json.action }}\",\n  \"callId\": \"{{ $('Route by Decision').item.json.callId }}\",\n  \"patientName\": \"{{ $('Route by Decision').item.json.patientName }}\",\n  \"urgency\": \"{{ $('Route by Decision').item.json.urgency }}\",\n  \"message\": \"Appointment request processed, SMS sent\",\n  \"timestamp\": \"{{ $('Route by Decision').item.json.timestamp }}\"\n}",
+        "options": {}
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1540,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"action\": \"acknowledged\",\n  \"eventType\": \"{{ $json.eventType }}\",\n  \"callId\": \"{{ $json.callId }}\",\n  \"message\": \"{{ $json.message }}\"\n}",
+        "options": {}
+      },
+      "id": "respond-acknowledge",
+      "name": "Respond Acknowledge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decision Agent wraps structured output in an 'output' field.\n// Flatten it so downstream nodes can reference $json.action, $json.patientName, etc.\nconst data = $input.item.json.output || $input.item.json;\nreturn [{ json: data }];"
+      },
+      "id": "flatten-decision-output",
+      "name": "Flatten Decision Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        770,
+        550
+      ]
+    }
+  ],
+  "connections": {
+    "VAPI Webhook": {
+      "main": [
+        [
+          {
+            "node": "Route by Message Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Message Type": {
+      "main": [
+        [
+          {
+            "node": "Extract Tool Call",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route - End of Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route - End of Call": {
+      "main": [
+        [
+          {
+            "node": "Normalize VAPI Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Fast Ack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Tool Call": {
+      "main": [
+        [
+          {
+            "node": "Route - Check Availability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route - Check Availability": {
+      "main": [
+        [
+          {
+            "node": "Handle Check Availability",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route - Save Intake",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Check Availability": {
+      "main": [
+        [
+          {
+            "node": "Respond Tool Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route - Save Intake": {
+      "main": [
+        [
+          {
+            "node": "Handle Save Intake",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Unknown Tool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Save Intake": {
+      "main": [
+        [
+          {
+            "node": "Handle Save Intake Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Save Intake Respond": {
+      "main": [
+        [
+          {
+            "node": "Respond Tool Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Unknown Tool": {
+      "main": [
+        [
+          {
+            "node": "Respond Tool Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize VAPI Payload": {
+      "main": [
+        [
+          {
+            "node": "Decision Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Decision Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Decision Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decision Agent": {
+      "main": [
+        [
+          {
+            "node": "Flatten Decision Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Decision": {
+      "main": [
+        [
+          {
+            "node": "Save to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Acknowledge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Phone Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Phone Valid?": {
+      "main": [
+        [
+          {
+            "node": "Send Patient SMS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond No SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Patient SMS": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten Decision Output": {
+      "main": [
+        [
+          {
+            "node": "Route by Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "updatedAt": "2026-02-09T19:34:28.045Z",
+      "createdAt": "2026-02-09T19:34:28.045Z",
+      "id": "AijcuRqBTMqLlirL",
+      "name": "BizElevate"
+    },
+    {
+      "updatedAt": "2026-02-12T08:59:29.351Z",
+      "createdAt": "2026-02-12T08:59:29.351Z",
+      "id": "PfXZnRVSEfkirIfo",
+      "name": "MCP-Architecture"
+    },
+    {
+      "updatedAt": "2026-02-09T19:34:28.087Z",
+      "createdAt": "2026-02-09T19:34:28.087Z",
+      "id": "lCe4YlvpdJ0PrOS7",
+      "name": "Capability-2"
+    }
+  ],
+  "triggerCount": 0,
+  "versionId": "2562e89b-820a-4fad-a045-d9825b11199a"
+}

@@ -1,5 +1,7 @@
 {
-  "_note": "REFERENCE CONFIG ONLY - Keep your existing Alex dental assistant prompt. Only use the serverUrl, serverUrlSecret, and analysisPlan sections from this file.",
+  "_note": "REFERENCE CONFIG ONLY. For the active system prompt, use vapi/prompts/alex-v2-intake-only.md. Replace the systemPrompt field below with the content of that file. The serverUrl, serverUrlSecret, tools, and analysisPlan sections are current and correct.",
+  "_promptVersion": "v2-intake-only",
+  "_promptFile": "vapi/prompts/alex-v2-intake-only.md",
   "name": "BizElevate Appointment Concierge",
   "model": {
     "provider": "openai",
@@ -21,11 +23,72 @@
   "recordingEnabled": true,
   "transcriptionEnabled": true,
   "endCallFunctionEnabled": true,
+  "serverMessages": ["end-of-call-report"],
   "metadata": {
     "capability": "appointment-request",
     "version": "1.0",
     "client": "bizelevate-demo"
   },
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "check_availability",
+        "description": "Check if a specific date and time is available for an appointment. Call this when the patient asks about a specific date/time slot.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "description": "The requested date (e.g., Monday, March 3rd, next Tuesday)"
+            },
+            "time": {
+              "type": "string",
+              "description": "The requested time (e.g., 2pm, morning, afternoon)"
+            }
+          },
+          "required": ["date", "time"]
+        }
+      },
+      "server": {
+        "url": "https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment",
+        "secret": "<VAPI_WEBHOOK_SECRET>"
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "save_intake",
+        "description": "Save the patient's appointment request details once all information has been collected. Call this after confirming the patient's name, phone, preferred date/time, and reason.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "patientName": {
+              "type": "string",
+              "description": "Patient's full name"
+            },
+            "patientPhone": {
+              "type": "string",
+              "description": "Patient's phone number with country code"
+            },
+            "requestedDateTime": {
+              "type": "string",
+              "description": "Preferred appointment date and time (e.g., Monday 2pm, Tuesday morning)"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Reason for the appointment visit"
+            }
+          },
+          "required": ["patientName", "patientPhone"]
+        }
+      },
+      "server": {
+        "url": "https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment",
+        "secret": "<VAPI_WEBHOOK_SECRET>"
+      }
+    }
+  ],
   "analysisPlan": {
     "structuredDataPrompt": "Extract the following from the call transcript:\n- patientName: The caller's full name\n- patientPhone: The caller's phone number (digits only, with country code if provided)\n- requestedDateTime: The preferred appointment date and time\n- reason: The reason for the appointment visit\n\nReturn as JSON. Use null for any field not clearly provided.",
     "structuredDataSchema": {

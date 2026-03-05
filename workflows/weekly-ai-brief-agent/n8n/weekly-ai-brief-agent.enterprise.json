@@ -1,0 +1,499 @@
+{
+  "name": "BizElevate — Weekly AI Brief Agent (Enterprise)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * 0"
+            }
+          ]
+        }
+      },
+      "id": "sched-trigger",
+      "name": "Weekly Sunday 6pm",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "notes": "Runs every Sunday at 18:00. Timezone set in workflow settings to Australia/Brisbane.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Test Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 520],
+      "notes": "Click 'Test Workflow' in the editor to run manually."
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"dateWindowDays\": 7,\n  \"maxItemsPerFeed\": 25,\n  \"maxTotalItems\": 150,\n  \"tenantId\": \"BIZELEVATE_INTERNAL\",\n  \"notionDatabaseId\": \"3092b7aaf2e38022bee4fc571b926f39\",\n  \"slackChannelId\": \"C0A7ULJ84CE\",\n  \"enableNotion\": true,\n  \"enableSlack\": true,\n  \"enableXPlaceholders\": true,\n  \"enableNewsletterHighlights\": true,\n  \"enableClaudeFallback\": false,\n  \"dedupeStore\": \"data\",\n  \"maxDigestChars\": 12000\n}",
+        "options": {}
+      },
+      "id": "config",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [500, 400],
+      "notes": "SINGLE SOURCE OF TRUTH. Edit values here — all downstream nodes reference $('Config').first().json. Replace YOUR_NOTION_DATABASE_ID and YOUR_SLACK_CHANNEL_ID with real values.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fetch all RSS feeds in a single node to avoid parallel branch execution\nconst feeds = [\n  { name: 'TechCrunch', url: 'https://techcrunch.com/category/artificial-intelligence/feed/', type: 'rss' },\n  { name: 'The Verge', url: 'https://www.theverge.com/rss/ai-artificial-intelligence/index.xml', type: 'rss' },\n  { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index', type: 'rss' },\n  { name: 'Google AI', url: 'https://blog.google/technology/ai/rss/', type: 'rss' },\n  { name: 'OpenAI', url: 'https://openai.com/blog/rss.xml', type: 'rss' },\n  { name: 'Anthropic', url: 'https://www.anthropic.com/rss.xml', type: 'rss' },\n  { name: 'Hugging Face', url: 'https://huggingface.co/blog/feed.xml', type: 'rss' },\n  { name: 'n8n', url: 'https://blog.n8n.io/rss/', type: 'rss' },\n  { name: 'Twilio', url: 'https://www.twilio.com/blog/feed', type: 'rss' },\n  { name: 'Import AI', url: 'https://importai.substack.com/feed', type: 'newsletter' },\n  { name: 'Last Week in AI', url: 'https://lastweekin.ai/feed', type: 'newsletter' }\n];\n\nconst maxPerFeed = $('Config').first().json.maxItemsPerFeed || 25;\nconst allItems = [];\nconst errors = [];\n\nfor (const feed of feeds) {\n  try {\n    const response = await this.helpers.httpRequest({\n      method: 'GET',\n      url: feed.url,\n      returnFullResponse: true,\n      timeout: 15000,\n    });\n    \n    const xml = typeof response.body === 'string' ? response.body : JSON.stringify(response.body);\n    \n    // Simple RSS/Atom XML parsing\n    const items = [];\n    \n    // Try RSS <item> tags first\n    const rssItemRegex = /<item[\\s>](.*?)<\\/item>/gs;\n    let match;\n    while ((match = rssItemRegex.exec(xml)) !== null && items.length < maxPerFeed) {\n      const itemXml = match[1];\n      const title = (itemXml.match(/<title[^>]*>(?:<!\\[CDATA\\[)?(.*?)(?:\\]\\]>)?<\\/title>/s) || [])[1] || '';\n      const link = (itemXml.match(/<link[^>]*>(?:<!\\[CDATA\\[)?(.*?)(?:\\]\\]>)?<\\/link>/s) || [])[1] || '';\n      const pubDate = (itemXml.match(/<pubDate[^>]*>(.*?)<\\/pubDate>/s) || [])[1] || '';\n      const description = (itemXml.match(/<description[^>]*>(?:<!\\[CDATA\\[)?(.*?)(?:\\]\\]>)?<\\/description>/s) || [])[1] || '';\n      \n      if (title || link) {\n        items.push({\n          json: {\n            source: feed.name,\n            type: feed.type || 'rss',\n            title: title.replace(/<[^>]*>/g, '').trim(),\n            url: link.trim(),\n            publishedAt: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString(),\n            summary: description.replace(/<[^>]*>/g, '').substring(0, 300).trim()\n          }\n        });\n      }\n    }\n    \n    // If no RSS items found, try Atom <entry> tags\n    if (items.length === 0) {\n      const atomEntryRegex = /<entry[\\s>](.*?)<\\/entry>/gs;\n      while ((match = atomEntryRegex.exec(xml)) !== null && items.length < maxPerFeed) {\n        const entryXml = match[1];\n        const title = (entryXml.match(/<title[^>]*>(?:<!\\[CDATA\\[)?(.*?)(?:\\]\\]>)?<\\/title>/s) || [])[1] || '';\n        const link = (entryXml.match(/<link[^>]*href=[\"'](.*?)[\"']/s) || [])[1] || '';\n        const published = (entryXml.match(/<(?:published|updated)[^>]*>(.*?)<\\/(?:published|updated)>/s) || [])[1] || '';\n        const summary = (entryXml.match(/<(?:summary|content)[^>]*>(?:<!\\[CDATA\\[)?(.*?)(?:\\]\\]>)?<\\/(?:summary|content)>/s) || [])[1] || '';\n        \n        if (title || link) {\n          items.push({\n            json: {\n              source: feed.name,\n              type: feed.type || 'rss',\n              title: title.replace(/<[^>]*>/g, '').trim(),\n              url: link.trim(),\n              publishedAt: published ? new Date(published).toISOString() : new Date().toISOString(),\n              summary: summary.replace(/<[^>]*>/g, '').substring(0, 300).trim()\n            }\n          });\n        }\n      }\n    }\n    \n    allItems.push(...items);\n  } catch (err) {\n    errors.push({ feed: feed.name, error: err.message || String(err) });\n  }\n}\n\n// Log any feed errors as a system item\nif (errors.length > 0) {\n  allItems.push({\n    json: {\n      source: 'SYSTEM',\n      title: `Feed errors: ${errors.map(e => e.feed).join(', ')}`,\n      url: '',\n      publishedAt: new Date().toISOString(),\n      summary: errors.map(e => `${e.feed}: ${e.error}`).join('; ')\n    }\n  });\n}\n\nreturn allItems.length > 0\n  ? allItems\n  : [{ json: { source: 'SYSTEM', title: 'No items from any feed', url: '', publishedAt: new Date().toISOString(), summary: 'All feeds failed or returned empty.' } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "fetch-all-feeds",
+      "name": "Fetch All RSS Feeds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 400],
+      "notes": "Fetches all RSS feeds sequentially in a single node to prevent parallel branch execution. Failed feeds are logged but don't stop the pipeline."
+    },
+    {
+      "parameters": {},
+      "id": "placeholder-newsletters",
+      "name": "Placeholder: Newsletters",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [800, 1080],
+      "notes": "ACTIVATED: Import AI (Substack) + Last Week in AI added to Fetch All RSS Feeds node. FUTURE: Add The Batch (no RSS), TLDR AI (community wrapper needed).",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {},
+      "id": "placeholder-x-twitter",
+      "name": "Placeholder: X/Twitter",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [800, 1220],
+      "notes": "FUTURE: Add HTTP Request to X/Twitter API. High signal: @AndrewYNg, @demishassabis, @gdb, @Thom_Wolf, @jackclarkSF, @karpathy, @emollick. Secondary: @levelsio, @rryssf_, @kloss_xyz, @EXM7777, @vasuman. Connect output to Merge & Normalize node.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge & Normalize all feed items into standard format (preserves type: rss/newsletter)\nconst allItems = $input.all();\nconst maxTotal = $('Config').first().json.maxTotalItems || 150;\nconst normalized = [];\n\nfor (const item of allItems) {\n  const d = item.json;\n  if (!d.title && !d.url) continue;\n  if (d.source === 'SYSTEM') {\n    normalized.push(item);\n    continue;\n  }\n\n  normalized.push({\n    json: {\n      source: d.source || 'Unknown',\n      type: d.type || 'rss',\n      title: (d.title || '').trim(),\n      url: d.url || '',\n      publishedAt: d.publishedAt || new Date().toISOString(),\n      summary: (d.summary || '').replace(/<[^>]*>/g, '').substring(0, 300).trim()\n    }\n  });\n}\n\nnormalized.sort((a, b) => new Date(b.json.publishedAt) - new Date(a.json.publishedAt));\nconst result = normalized.slice(0, maxTotal);\n\nreturn result.length > 0\n  ? result\n  : [{ json: { source: 'SYSTEM', type: 'rss', title: 'No items found', url: '', publishedAt: new Date().toISOString(), summary: 'All feeds returned empty.' } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "merge-normalize",
+      "name": "Merge & Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Filter items to only those within the configured date window\nconst config = $('Config').first().json;\nconst days = config.dateWindowDays || 7;\nconst cutoff = new Date();\ncutoff.setDate(cutoff.getDate() - days);\n\nconst items = $input.all();\nconst filtered = items.filter(item => {\n  const pubDate = new Date(item.json.publishedAt);\n  return !isNaN(pubDate.getTime()) && pubDate >= cutoff;\n});\n\nreturn filtered.length > 0\n  ? filtered\n  : [{ json: { source: 'SYSTEM', title: 'No items in date window', url: '', publishedAt: new Date().toISOString(), summary: `No items found within last ${days} days.` } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "filter-date",
+      "name": "Filter: Last N Days",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1350, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dedupe using n8n workflow static data (30-day rolling window)\nconst items = $input.all();\nconst staticData = $getWorkflowStaticData('global');\n\n// Initialize stores\nif (!staticData.seenUrls) staticData.seenUrls = {};\nif (!staticData.runHistory) staticData.runHistory = [];\n\n// Clean entries older than 30 days\nconst thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);\nfor (const [url, ts] of Object.entries(staticData.seenUrls)) {\n  if (ts < thirtyDaysAgo) delete staticData.seenUrls[url];\n}\n\nconst kept = [];\nlet seenCount = 0;\n\nfor (const item of items) {\n  const url = item.json.url;\n  if (!url || item.json.source === 'SYSTEM') {\n    kept.push(item);\n    continue;\n  }\n\n  if (staticData.seenUrls[url]) {\n    seenCount++;\n    continue;\n  }\n\n  staticData.seenUrls[url] = Date.now();\n  kept.push(item);\n}\n\n// Store stats for run summary\nstaticData.lastRunStats = {\n  totalIngested: items.length,\n  seenCount,\n  keptCount: kept.length,\n  dedupeStoreSize: Object.keys(staticData.seenUrls).length\n};\n\nreturn kept.length > 0\n  ? kept\n  : [{ json: { source: 'SYSTEM', title: 'All items deduplicated', url: '', publishedAt: new Date().toISOString(), summary: `All ${items.length} items were already seen. seenCount=${seenCount}` } }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "dedupe",
+      "name": "Dedupe (Static Data)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build separate digests for RSS news and newsletter highlights\nconst items = $input.all();\nconst maxLength = $('Config').first().json.maxDigestChars || 12000;\nconst newsletterMaxLength = 4000;\n\nlet digest = '';\nlet newsletterDigest = '';\nlet truncated = false;\nlet newsletterTruncated = false;\nlet itemCount = 0;\nlet newsletterCount = 0;\n\nfor (const item of items) {\n  const d = item.json;\n  if (d.source === 'SYSTEM') continue;\n\n  const entry = `[${d.source}] ${d.title}\\n${d.url}\\nPublished: ${d.publishedAt}\\n${d.summary}\\n\\n---\\n\\n`;\n\n  if (d.type === 'newsletter') {\n    if (newsletterDigest.length + entry.length > newsletterMaxLength) {\n      newsletterTruncated = true;\n      continue;\n    }\n    newsletterDigest += entry;\n    newsletterCount++;\n  } else {\n    if (digest.length + entry.length > maxLength) {\n      truncated = true;\n      continue;\n    }\n    digest += entry;\n    itemCount++;\n  }\n}\n\nif (truncated) digest += '\\n[DIGEST TRUNCATED]\\n';\nif (newsletterTruncated) newsletterDigest += '\\n[NEWSLETTER DIGEST TRUNCATED]\\n';\nif (itemCount === 0) digest = 'No new AI news items found this week.';\nif (newsletterCount === 0) newsletterDigest = 'No newsletter items this week.';\n\nreturn [{\n  json: {\n    digest,\n    newsletterDigest,\n    itemCount,\n    newsletterCount,\n    truncated,\n    generatedAt: new Date().toISOString()\n  }\n}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "digest-builder",
+      "name": "Digest Builder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1850, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare the OpenAI Chat Completions request body\nconst digest = $json.digest;\nconst newsletterDigest = $json.newsletterDigest || '';\nconst itemCount = $json.itemCount;\nconst newsletterCount = $json.newsletterCount || 0;\n\nconst systemPrompt = `You are the AI Brief Analyst for BizElevate, an AI automation consultancy serving clinics.\n\n## YOUR BUSINESS CONTEXT (use this to filter relevance)\n\nBizElevate builds end-to-end automation solutions for clinics using:\n- VAPI for voice AI agents (appointment booking, patient interaction)\n- n8n for workflow automation and orchestration\n- Twilio for SMS communication\n- OpenAI for AI processing (GPT models via API)\n- Claude/Anthropic for AI processing (alternative/complement to OpenAI)\n- Google Sheets for data storage\n- Core workflows: appointment management, patient communication, clinic operations automation\n\n## YOUR TASK\n\nAnalyze the AI news digest below and produce a structured weekly brief. Be ruthlessly selective — most news does NOT matter for this specific business.\n\n## CLASSIFICATION FRAMEWORK\n\nFor each item, classify as:\n- BUSINESS RELEASE: Directly impacts BizElevate workflows THIS WEEK (new API features, pricing changes, integration updates, voice AI improvements, automation tool updates)\n- BENCHMARK RELEASE: Higher scores on tests, marginal improvements, research papers — interesting but not actionable this week\n- IRRELEVANT: Doesn't touch the tech stack or business model at all (image gen, video gen, robotics, etc.)\n\n## OUTPUT FORMAT (strict)\n\n### \\uD83D\\uDCC5 Weekly AI Brief — [Date Range]\n\n#### \\uD83D\\uDCE1 What Dropped This Week\n[3-5 bullet max, one line each, factual]\n\n#### \\uD83C\\uDFAF What's Relevant to BizElevate\n[1-2 items MAX with 2-3 sentence explanation of WHY it matters and WHAT to test]\n\n#### \\uD83E\\uDDEA What to Test This Week\n[Specific action items — exact prompts to try, APIs to test, features to evaluate]\n\n#### \\uD83D\\uDD07 Safe to Ignore\n[Everything else, briefly listed with one-line reason why it's noise for this business]\n\n#### \\uD83D\\uDCEC Newsletter Highlights\n[If newsletter items are provided, extract 2-3 key expert insights or perspectives relevant to BizElevate. These are curated expert opinions, not breaking news. Focus on strategic takeaways. If no newsletter items, write 'No newsletter items this week.']\n\n#### \\uD83D\\uDCCA Benchmark vs Business Verdict\n[One paragraph: overall signal-to-noise ratio this week. Was anything actually game-changing or was it mostly benchmark noise?]\n\nBe direct. Be concise. No hype. Only signal.`;\n\nreturn [{\n  json: {\n    requestBody: {\n      model: 'gpt-4o',\n      temperature: 0.3,\n      max_tokens: 4000,\n      messages: [\n        { role: 'system', content: systemPrompt },\n        { role: 'user', content: `Here is this week's AI news digest (${itemCount} RSS items):\\n\\n${digest}${newsletterCount > 0 ? `\\n\\n--- NEWSLETTER SOURCES (${newsletterCount} items) ---\\nThese are from curated AI newsletters (expert perspectives). Use them for the Newsletter Highlights section:\\n\\n${newsletterDigest}` : ''}` }\n      ]\n    },\n    itemCount,\n    digest\n  }\n}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "prepare-ai-request",
+      "name": "Prepare AI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2100, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.requestBody) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "call-openai",
+      "name": "Call OpenAI API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2350, 400],
+      "notes": "SETUP: Create an HTTP Header Auth credential with Name=Authorization, Value=Bearer sk-your-key. Then assign it here. Replace YOUR_OPENAI_CREDENTIAL_ID.",
+      "notesInFlow": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "K4UMGNmIqgR1AblT",
+          "name": "OpenAI Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse OpenAI response and extract the brief\nconst response = $json;\nconst briefContent = response.choices?.[0]?.message?.content || 'ERROR: No brief generated. Check OpenAI response.';\nconst usage = response.usage || {};\nconst itemCount = $('Prepare AI Request').first().json.itemCount || 0;\n\nreturn [{\n  json: {\n    brief: briefContent,\n    model: response.model || 'unknown',\n    promptTokens: usage.prompt_tokens || 0,\n    completionTokens: usage.completion_tokens || 0,\n    totalTokens: usage.total_tokens || 0,\n    itemCount\n  }\n}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "parse-ai-response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2600, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-notion-enabled",
+              "leftValue": "={{ String($('Config').first().json.enableNotion) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-notion",
+      "name": "IF Notion Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2850, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Notion page creation body\nconst config = $('Config').first().json;\nconst brief = $('Parse AI Response').first().json.brief;\nconst today = new Date().toISOString().split('T')[0];\n\n// Split brief into chunks of 2000 chars (Notion block limit)\nconst chunks = [];\nfor (let i = 0; i < brief.length; i += 2000) {\n  chunks.push(brief.substring(i, i + 2000));\n}\n\nconst children = chunks.map(chunk => ({\n  object: 'block',\n  type: 'paragraph',\n  paragraph: {\n    rich_text: [{ type: 'text', text: { content: chunk } }]\n  }\n}));\n\nreturn [{\n  json: {\n    notionBody: {\n      parent: { database_id: config.notionDatabaseId },\n      properties: {\n        Name: { title: [{ text: { content: `Weekly AI Brief — ${today}` } }] },\n        Date: { date: { start: today } },\n        Status: { select: { name: 'Published' } },\n        Type: { select: { name: 'Weekly Brief' } }\n      },\n      children\n    }\n  }\n}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "prepare-notion",
+      "name": "Prepare Notion Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3100, 100]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.notion.com/v1/pages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Notion-Version",
+              "value": "2022-06-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.notionBody) }}",
+        "options": {}
+      },
+      "id": "post-notion",
+      "name": "Post to Notion",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3350, 100],
+      "notes": "SETUP: Create HTTP Header Auth credential with Name=Authorization, Value=Bearer ntn_your-notion-token. Share your Notion database with the integration.",
+      "notesInFlow": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "xYKLeZ8FuRb8oht9",
+          "name": "Notion Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-slack-enabled",
+              "leftValue": "={{ String($('Config').first().json.enableSlack) }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-slack",
+      "name": "IF Slack Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2850, 550]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare Slack message body\nconst config = $('Config').first().json;\nconst brief = $('Parse AI Response').first().json.brief;\nconst today = new Date().toISOString().split('T')[0];\n\n// Truncate if needed (Slack limit ~4000 chars per message)\nlet text = brief;\nif (text.length > 3900) {\n  text = text.substring(0, 3900) + '\\n\\n_[Brief truncated for Slack — see Notion for full version]_';\n}\n\nreturn [{\n  json: {\n    slackBody: {\n      channel: config.slackChannelId,\n      text: `*Weekly AI Brief — ${today}*\\n\\n${text}`,\n      unfurl_links: false,\n      unfurl_media: false\n    }\n  }\n}];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "prepare-slack",
+      "name": "Prepare Slack Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3100, 450]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.slackBody) }}",
+        "options": {}
+      },
+      "id": "post-slack",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3350, 450],
+      "notes": "SETUP: Create HTTP Header Auth credential with Name=Authorization, Value=Bearer xoxb-your-slack-bot-token. Bot needs chat:write scope. Invite bot to channel.",
+      "notesInFlow": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "VurKfpPzTuq3sbP2",
+          "name": "Slack Header Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build run summary with stats from all stages\nconst config = $('Config').first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst dedupeStats = staticData.lastRunStats || {};\nconst aiResponse = $('Parse AI Response').first().json;\n\nconst summary = {\n  tenantId: config.tenantId,\n  runTimestamp: new Date().toISOString(),\n  executionId: $execution?.id || 'unknown',\n  itemCountIngested: dedupeStats.totalIngested || 0,\n  itemCountAfterDateFilter: dedupeStats.totalIngested || 0,\n  itemCountAfterDedupe: dedupeStats.keptCount || 0,\n  seenCount: dedupeStats.seenCount || 0,\n  dedupeStoreSize: dedupeStats.dedupeStoreSize || 0,\n  digestItemCount: aiResponse.itemCount || 0,\n  aiModel: aiResponse.model || 'unknown',\n  aiTokensUsed: aiResponse.totalTokens || 0,\n  notionEnabled: config.enableNotion,\n  slackEnabled: config.enableSlack,\n  sourcesUsed: ['TechCrunch', 'The Verge', 'Ars Technica', 'Google AI', 'OpenAI', 'Anthropic', 'Hugging Face', 'n8n', 'Twilio', 'Import AI', 'Last Week in AI']\n};\n\n// Store in static data for history\nif (!staticData.runHistory) staticData.runHistory = [];\nstaticData.runHistory.push(summary);\n// Keep last 52 runs (1 year of weekly runs)\nif (staticData.runHistory.length > 52) {\n  staticData.runHistory = staticData.runHistory.slice(-52);\n}\n\nreturn [{ json: summary }];",
+        "mode": "runOnceForAllItems"
+      },
+      "id": "run-summary",
+      "name": "Run Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2850, 800]
+    },
+    {
+      "parameters": {},
+      "id": "log-placeholder",
+      "name": "Placeholder: External Log",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [3100, 800],
+      "notes": "FUTURE: Connect to Google Sheets or a logging service to persist run summaries externally. Currently stored in n8n workflow static data (last 52 runs).",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {},
+      "id": "placeholder-claude-fallback",
+      "name": "Placeholder: Claude Fallback",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2350, 650],
+      "notes": "FUTURE: Add Claude/Anthropic API as fallback when OpenAI is down. Controlled by Config.enableClaudeFallback. Implement as IF node after Digest Builder that routes to either OpenAI or Claude HTTP Request.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "Weekly Sunday 6pm": {
+      "main": [
+        [
+          { "node": "Config", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Manual Test Trigger": {
+      "main": [
+        [
+          { "node": "Config", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          { "node": "Fetch All RSS Feeds", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch All RSS Feeds": {
+      "main": [
+        [
+          { "node": "Merge & Normalize", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Merge & Normalize": {
+      "main": [
+        [
+          { "node": "Filter: Last N Days", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Filter: Last N Days": {
+      "main": [
+        [
+          { "node": "Dedupe (Static Data)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Dedupe (Static Data)": {
+      "main": [
+        [
+          { "node": "Digest Builder", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Digest Builder": {
+      "main": [
+        [
+          { "node": "Prepare AI Request", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Prepare AI Request": {
+      "main": [
+        [
+          { "node": "Call OpenAI API", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Call OpenAI API": {
+      "main": [
+        [
+          { "node": "Parse AI Response", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          { "node": "IF Notion Enabled", "type": "main", "index": 0 },
+          { "node": "IF Slack Enabled", "type": "main", "index": 0 },
+          { "node": "Run Summary", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "IF Notion Enabled": {
+      "main": [
+        [
+          { "node": "Prepare Notion Page", "type": "main", "index": 0 }
+        ],
+        []
+      ]
+    },
+    "Prepare Notion Page": {
+      "main": [
+        [
+          { "node": "Post to Notion", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "IF Slack Enabled": {
+      "main": [
+        [
+          { "node": "Prepare Slack Message", "type": "main", "index": 0 }
+        ],
+        []
+      ]
+    },
+    "Prepare Slack Message": {
+      "main": [
+        [
+          { "node": "Post to Slack", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Run Summary": {
+      "main": [
+        [
+          { "node": "Placeholder: External Log", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Australia/Brisbane",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "BizElevate",
+      "createdAt": "2026-02-17T00:00:00.000Z",
+      "updatedAt": "2026-02-17T00:00:00.000Z"
+    },
+    {
+      "name": "R&D",
+      "createdAt": "2026-02-17T00:00:00.000Z",
+      "updatedAt": "2026-02-17T00:00:00.000Z"
+    },
+    {
+      "name": "AI-Brief",
+      "createdAt": "2026-02-17T00:00:00.000Z",
+      "updatedAt": "2026-02-17T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "versionId": "1"
+}

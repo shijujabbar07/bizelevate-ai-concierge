@@ -1,0 +1,52 @@
+{
+  "_note": "VAPI tool config for check_availability. Used by v1 (full-booking) prompt only. Do NOT add to VAPI assistant when using v2-intake-only prompt.",
+  "_status": "STUB — not yet implemented. Complete before v1 upgrade.",
+  "_promptVersion": "v1-full-booking",
+  "_docs": "This tool needs a real availability source (Google Calendar, PMS, or manual slots sheet) before it can go live. The n8n webhook handler for this tool must query the source and return available slots. See CLAUDE.md Pro Tier tools.",
+  "type": "function",
+  "function": {
+    "name": "check_availability",
+    "description": "Check available appointment slots for a given preference. Call this when the patient states a preferred date or time, before saving intake. Returns available options or a soft response if no real source is connected.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "preferred_time": {
+          "description": "The patient's preferred appointment time or day as stated during the call (e.g. 'Tuesday morning', 'this week', 'as soon as possible')",
+          "type": "string",
+          "default": ""
+        },
+        "urgency": {
+          "description": "Urgency level based on the reason for visit",
+          "type": "string",
+          "enum": ["routine", "urgent", "emergency"],
+          "default": "routine"
+        }
+      },
+      "required": [
+        "preferred_time"
+      ]
+    }
+  },
+  "messages": [
+    {
+      "type": "request-start",
+      "blocking": true
+    }
+  ],
+  "server": {
+    "url": "https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment",
+    "timeoutSeconds": 10,
+    "headers": {
+      "x-vapi-secret": "<VAPI_WEBHOOK_SECRET>"
+    }
+  },
+  "async": false,
+  "_implementation_checklist": [
+    "1. Decide availability source: Google Calendar, manual slots spreadsheet, or PMS API",
+    "2. Build n8n handler for toolName=check_availability in the tool-calls path",
+    "3. Handler must return available slots in a patient-friendly format",
+    "4. Replace <VAPI_WEBHOOK_SECRET> with real value from secrets.local.json",
+    "5. Add this tool to the VAPI assistant before upgrading to v1 prompt",
+    "6. Test with at least 3 scenario types: routine, urgent, fully booked"
+  ]
+}

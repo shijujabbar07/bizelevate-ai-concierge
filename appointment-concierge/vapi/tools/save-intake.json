@@ -1,0 +1,57 @@
+{
+  "_note": "VAPI tool config for save_intake. Used by v1 (full-booking) prompt only. Do NOT add to VAPI assistant when using v2-intake-only prompt.",
+  "_status": "INACTIVE — preserved for v1 upgrade",
+  "_promptVersion": "v1-full-booking",
+  "_docs": "Re-enable this tool when upgrading to v1. Update the server URL and secret if credentials have changed.",
+  "id": "895b66f4-9c3d-467b-a5d4-9fb6a3d6f786",
+  "createdAt": "2026-02-21T00:52:54.986Z",
+  "updatedAt": "2026-02-21T00:56:58.335Z",
+  "type": "function",
+  "function": {
+    "name": "save_intake",
+    "description": "Save the patient's appointment request details once all information has been collected. Call this after confirming the patient's name, phone, preferred date/time, and reason",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "description": "",
+          "type": "string",
+          "default": ""
+        },
+        "patientName": {
+          "description": "",
+          "type": "string",
+          "default": ""
+        },
+        "patientPhone": {
+          "description": "",
+          "type": "string",
+          "default": ""
+        },
+        "requestedDateTime": {
+          "description": "",
+          "type": "string",
+          "default": ""
+        }
+      },
+      "required": [
+        "patientPhone"
+      ]
+    }
+  },
+  "messages": [
+    {
+      "type": "request-start",
+      "blocking": false
+    }
+  ],
+  "orgId": "7b716c1c-6042-4c55-83aa-2527ba6d5146",
+  "server": {
+    "url": "https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment",
+    "timeoutSeconds": 20,
+    "headers": {
+      "x-vapi-secret": "<VAPI_WEBHOOK_SECRET>"
+    }
+  },
+  "async": false
+}
