@@ -25,6 +25,7 @@
 | v1.0 | 2026-03-01 | Initial playbook — covers full lifecycle from blank state to demo-ready |
 | v1.1 | 2026-03-05 | Added Phase 6 (Management App + Supabase). Updated stack, workflow diagram, next capabilities. Reflects v2.1 VAPI prompt (no tools, transcript-only extraction, phone validation). |
 | v1.2 | 2026-03-05 | Added `clients` table to Phase 6 Supabase schema. `client_subscriptions` now references `clients.id` via FK. Supports multi-industry rollout. |
+| v1.3 | 2026-03-05 | Phase 6.2 implemented. Two Supabase write nodes deployed to n8n (after Phone Valid? on both branches). SQL moved to `supabase/migrations/` and `supabase/seeds/`. Phase 6.2 section updated to reflect actual implementation. |
 
 ---
 
@@ -792,27 +793,36 @@ SQL files are in `supabase/migrations/` and `supabase/seeds/`. Paste each file d
 
 ## 6.2 n8n Workflow Update — Write to Supabase
 
-**Action item for Claude**: Add a Supabase write node to the existing concierge workflow.
+**Status: IMPLEMENTED** — deployed to n8n workflow `HKHwb6mpWdvGcR070E8or`.
 
-Write to `call_logs` after the Phone Valid? check, on both branches (valid phone and no phone). This ensures every call is audited regardless of SMS outcome.
+Two HTTP Request nodes write to `call_logs` after `Phone Valid?`, one per branch:
 
-**New node to add**: `Write to Supabase` (HTTP Request POST to Supabase REST API) — inserted after `Save to Google Sheets`, before `Phone Valid?`.
+```
+Save to Google Sheets
+  → Phone Valid?
+      TRUE  → Write to Supabase          (sms_sent=true,  call_status=processed)
+                → Send Patient SMS → Respond Success
+      FALSE → Write to Supabase — No Phone  (sms_sent=false, call_status=no_phone)
+                → Respond No SMS
+```
 
-Fields to write:
+Both nodes use `onError: continueRegularOutput` — the workflow continues if Supabase is not yet configured.
 
-| Supabase column | Source |
-|-----------------|--------|
-| `capability` | hardcoded: `"appointment_concierge"` |
-| `client_id` | hardcoded: `"smile-dental"` (until multi-tenant) |
-| `call_id` | `$json.callId` |
-| `patient_name` | `$json.patientName` |
-| `patient_phone` | `$json.patientPhone` |
-| `requested_datetime` | `$json.requestedDateTime` |
-| `reason` | `$json.reason` |
-| `urgency` | `$json.urgency` |
-| `sms_sent` | set to `true` after SMS branch, `false` after no-SMS branch |
-| `call_status` | `"processed"` or `"no_phone"` |
-| `raw_transcript` | from normalised payload (needs to be passed through) |
+| Supabase column | Value |
+|-----------------|-------|
+| `capability` | `"appointment_concierge"` (hardcoded) |
+| `client_id` | `"smile-dental"` (hardcoded until multi-tenant) |
+| `call_id` | `$('Route by Decision').item.json.callId` |
+| `patient_name` | `$('Route by Decision').item.json.patientName` |
+| `patient_phone` | `$('Route by Decision').item.json.patientPhone` |
+| `requested_datetime` | `$('Route by Decision').item.json.requestedDateTime` |
+| `reason` | `$('Route by Decision').item.json.reason` |
+| `urgency` | `$('Route by Decision').item.json.urgency` |
+| `sms_sent` | `true` (SMS branch) / `false` (no-phone branch) |
+| `call_status` | `"processed"` (SMS branch) / `"no_phone"` (no-phone branch) |
+| `raw_transcript` | `$('Normalize VAPI Payload').item.json.transcript` |
+
+**To activate**: replace `<SUPABASE_URL>` and `<SUPABASE_SERVICE_KEY>` placeholders in the two Supabase nodes with real values from `secrets.local.json`, then push workflow via API.
 
 > **Note**: Google Sheets write is retained for now as the clinic-facing operational view. Supabase is the reporting/audit layer. Both coexist until the management app is live and validated.
 
