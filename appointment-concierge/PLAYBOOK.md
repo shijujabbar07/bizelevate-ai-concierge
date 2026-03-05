@@ -764,75 +764,21 @@ After the test row appears in the sheet, delete it manually.
 
 ## 6.1 Supabase Project Setup
 
-**Action item for Claude**: Create the Supabase project and schema.
+**Action item for Claude**: Create the Supabase project and run migrations.
 
 Project name: `bizelevate-concierge`
 Region: Sydney (`ap-southeast-2`) — closest to AU clients
 
-### Core audit table: `call_logs`
+SQL files are in `supabase/migrations/` and `supabase/seeds/`. Paste each file directly into the Supabase SQL Editor — no markdown, no extra characters.
 
-```sql
-create table call_logs (
-  id              uuid primary key default gen_random_uuid(),
-  created_at      timestamptz not null default now(),
-  capability      text not null,           -- 'appointment_concierge' | 'missed_call' | etc.
-  client_id       text not null,           -- slug: 'smile-dental' | 'sunrise-clinic'
-  call_id         text,                    -- VAPI call ID
-  patient_name    text,
-  patient_phone   text,
-  requested_datetime text,
-  reason          text,
-  urgency         text,                    -- 'routine' | 'urgent' | 'emergency'
-  sms_sent        boolean default false,
-  call_status     text,                    -- 'processed' | 'no_phone' | 'acknowledged'
-  raw_transcript  text,                    -- full transcript for audit
-  notes           text
-);
+**Run in order:**
 
--- Index for client dashboard queries
-create index on call_logs (client_id, created_at desc);
-create index on call_logs (client_id, capability);
-```
-
-### Clients table (master client registry)
-
-Required for multi-industry rollout. Every business using any BizElevate capability must have a record here. `client_subscriptions` and `call_logs` both reference `clients.id`.
-
-```sql
-create table clients (
-  id            text primary key,         -- slug: 'smile-dental', 'sunrise-physio', 'lakeview-legal'
-  name          text not null,            -- display name: 'Smile Dental Campsie'
-  industry      text,                     -- 'dental' | 'physio' | 'legal' | 'veterinary' | etc.
-  domain        text,                     -- optional: 'smiledental.com.au'
-  contact_name  text,
-  contact_email text,
-  active        boolean default true,
-  created_at    timestamptz default now()
-);
-
--- Seed demo client
-insert into clients (id, name, industry, contact_name)
-values ('smile-dental', 'Smile Dental Campsie', 'dental', 'Demo Client');
-```
-
-### Subscriptions table (capability gating)
-
-References `clients.id` — a subscription cannot exist without a client record.
-
-```sql
-create table client_subscriptions (
-  id            uuid primary key default gen_random_uuid(),
-  client_id     text not null references clients(id),
-  capability    text not null,            -- 'appointment_concierge' | 'missed_call'
-  active        boolean default true,
-  started_at    timestamptz default now(),
-  unique (client_id, capability)
-);
-
--- Seed demo subscription
-insert into client_subscriptions (client_id, capability)
-values ('smile-dental', 'appointment_concierge');
-```
+| Step | File | What it creates |
+|------|------|-----------------|
+| 1 | `supabase/migrations/001_create_clients.sql` | Master client registry |
+| 2 | `supabase/migrations/002_create_client_subscriptions.sql` | Capability gating (FK → clients) |
+| 3 | `supabase/migrations/003_create_call_logs.sql` | Audit log + indexes |
+| 4 | `supabase/seeds/001_demo_client.sql` | Demo client + subscription seed |
 
 ### Gate
 

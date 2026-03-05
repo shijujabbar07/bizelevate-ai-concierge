@@ -635,7 +635,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1540,
+        1760,
         600
       ]
     },
@@ -670,8 +670,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1320,
-        450
+        1760,
+        300
       ],
       "credentials": {
         "httpBasicAuth": {
@@ -691,8 +691,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        1540,
-        450
+        1980,
+        300
       ]
     },
     {
@@ -721,6 +721,88 @@
       "position": [
         770,
         550
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<SUPABASE_URL>/rest/v1/call_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "<SUPABASE_SERVICE_KEY>" },
+            { "name": "Authorization", "value": "Bearer <SUPABASE_SERVICE_KEY>" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "capability", "value": "appointment_concierge" },
+            { "name": "client_id", "value": "smile-dental" },
+            { "name": "call_id", "value": "={{ $('Route by Decision').item.json.callId }}" },
+            { "name": "patient_name", "value": "={{ $('Route by Decision').item.json.patientName }}" },
+            { "name": "patient_phone", "value": "={{ $('Route by Decision').item.json.patientPhone }}" },
+            { "name": "requested_datetime", "value": "={{ $('Route by Decision').item.json.requestedDateTime }}" },
+            { "name": "reason", "value": "={{ $('Route by Decision').item.json.reason }}" },
+            { "name": "urgency", "value": "={{ $('Route by Decision').item.json.urgency }}" },
+            { "name": "sms_sent", "value": "true" },
+            { "name": "call_status", "value": "processed" },
+            { "name": "raw_transcript", "value": "={{ $('Normalize VAPI Payload').item.json.transcript }}" }
+          ]
+        },
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "id": "write-supabase-sms",
+      "name": "Write to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<SUPABASE_URL>/rest/v1/call_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "<SUPABASE_SERVICE_KEY>" },
+            { "name": "Authorization", "value": "Bearer <SUPABASE_SERVICE_KEY>" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "capability", "value": "appointment_concierge" },
+            { "name": "client_id", "value": "smile-dental" },
+            { "name": "call_id", "value": "={{ $('Route by Decision').item.json.callId }}" },
+            { "name": "patient_name", "value": "={{ $('Route by Decision').item.json.patientName }}" },
+            { "name": "patient_phone", "value": "={{ $('Route by Decision').item.json.patientPhone }}" },
+            { "name": "requested_datetime", "value": "={{ $('Route by Decision').item.json.requestedDateTime }}" },
+            { "name": "reason", "value": "={{ $('Route by Decision').item.json.reason }}" },
+            { "name": "urgency", "value": "={{ $('Route by Decision').item.json.urgency }}" },
+            { "name": "sms_sent", "value": "false" },
+            { "name": "call_status", "value": "no_phone" },
+            { "name": "raw_transcript", "value": "={{ $('Normalize VAPI Payload').item.json.transcript }}" }
+          ]
+        },
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "id": "write-supabase-no-phone",
+      "name": "Write to Supabase — No Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        600
       ]
     }
   ],
@@ -940,11 +1022,33 @@
       "main": [
         [
           {
-            "node": "Send Patient SMS",
+            "node": "Write to Supabase",
             "type": "main",
             "index": 0
           }
         ],
+        [
+          {
+            "node": "Write to Supabase — No Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Supabase": {
+      "main": [
+        [
+          {
+            "node": "Send Patient SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Supabase — No Phone": {
+      "main": [
         [
           {
             "node": "Respond No SMS",
