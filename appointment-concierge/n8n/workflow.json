@@ -730,26 +730,68 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "<SUPABASE_SERVICE_KEY>" },
-            { "name": "Authorization", "value": "Bearer <SUPABASE_SERVICE_KEY>" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "<SUPABASE_SERVICE_KEY>"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer <SUPABASE_SERVICE_KEY>"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "contentType": "json",
         "bodyParameters": {
           "parameters": [
-            { "name": "capability", "value": "appointment_concierge" },
-            { "name": "client_id", "value": "smile-dental" },
-            { "name": "call_id", "value": "={{ $('Route by Decision').item.json.callId }}" },
-            { "name": "patient_name", "value": "={{ $('Route by Decision').item.json.patientName }}" },
-            { "name": "patient_phone", "value": "={{ $('Route by Decision').item.json.patientPhone }}" },
-            { "name": "requested_datetime", "value": "={{ $('Route by Decision').item.json.requestedDateTime }}" },
-            { "name": "reason", "value": "={{ $('Route by Decision').item.json.reason }}" },
-            { "name": "urgency", "value": "={{ $('Route by Decision').item.json.urgency }}" },
-            { "name": "sms_sent", "value": "true" },
-            { "name": "call_status", "value": "processed" },
-            { "name": "raw_transcript", "value": "={{ $('Normalize VAPI Payload').item.json.transcript }}" }
+            {
+              "name": "capability",
+              "value": "appointment_concierge"
+            },
+            {
+              "name": "client_id",
+              "value": "smile-dental"
+            },
+            {
+              "name": "call_id",
+              "value": "={{ $('Route by Decision').item.json.callId }}"
+            },
+            {
+              "name": "patient_name",
+              "value": "={{ $('Route by Decision').item.json.patientName }}"
+            },
+            {
+              "name": "patient_phone",
+              "value": "={{ $('Route by Decision').item.json.patientPhone }}"
+            },
+            {
+              "name": "requested_datetime",
+              "value": "={{ $('Route by Decision').item.json.requestedDateTime }}"
+            },
+            {
+              "name": "reason",
+              "value": "={{ $('Route by Decision').item.json.reason }}"
+            },
+            {
+              "name": "urgency",
+              "value": "={{ $('Route by Decision').item.json.urgency }}"
+            },
+            {
+              "name": "sms_sent",
+              "value": "true"
+            },
+            {
+              "name": "call_status",
+              "value": "processed"
+            },
+            {
+              "name": "raw_transcript",
+              "value": "={{ $('Normalize VAPI Payload').item.json.transcript }}"
+            }
           ]
         },
         "options": {}
@@ -771,26 +813,68 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "apikey", "value": "<SUPABASE_SERVICE_KEY>" },
-            { "name": "Authorization", "value": "Bearer <SUPABASE_SERVICE_KEY>" },
-            { "name": "Prefer", "value": "return=minimal" }
+            {
+              "name": "apikey",
+              "value": "<SUPABASE_SERVICE_KEY>"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer <SUPABASE_SERVICE_KEY>"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
           ]
         },
         "sendBody": true,
         "contentType": "json",
         "bodyParameters": {
           "parameters": [
-            { "name": "capability", "value": "appointment_concierge" },
-            { "name": "client_id", "value": "smile-dental" },
-            { "name": "call_id", "value": "={{ $('Route by Decision').item.json.callId }}" },
-            { "name": "patient_name", "value": "={{ $('Route by Decision').item.json.patientName }}" },
-            { "name": "patient_phone", "value": "={{ $('Route by Decision').item.json.patientPhone }}" },
-            { "name": "requested_datetime", "value": "={{ $('Route by Decision').item.json.requestedDateTime }}" },
-            { "name": "reason", "value": "={{ $('Route by Decision').item.json.reason }}" },
-            { "name": "urgency", "value": "={{ $('Route by Decision').item.json.urgency }}" },
-            { "name": "sms_sent", "value": "false" },
-            { "name": "call_status", "value": "no_phone" },
-            { "name": "raw_transcript", "value": "={{ $('Normalize VAPI Payload').item.json.transcript }}" }
+            {
+              "name": "capability",
+              "value": "appointment_concierge"
+            },
+            {
+              "name": "client_id",
+              "value": "smile-dental"
+            },
+            {
+              "name": "call_id",
+              "value": "={{ $('Route by Decision').item.json.callId }}"
+            },
+            {
+              "name": "patient_name",
+              "value": "={{ $('Route by Decision').item.json.patientName }}"
+            },
+            {
+              "name": "patient_phone",
+              "value": "={{ $('Route by Decision').item.json.patientPhone }}"
+            },
+            {
+              "name": "requested_datetime",
+              "value": "={{ $('Route by Decision').item.json.requestedDateTime }}"
+            },
+            {
+              "name": "reason",
+              "value": "={{ $('Route by Decision').item.json.reason }}"
+            },
+            {
+              "name": "urgency",
+              "value": "={{ $('Route by Decision').item.json.urgency }}"
+            },
+            {
+              "name": "sms_sent",
+              "value": "false"
+            },
+            {
+              "name": "call_status",
+              "value": "no_phone"
+            },
+            {
+              "name": "raw_transcript",
+              "value": "={{ $('Normalize VAPI Payload').item.json.transcript }}"
+            }
           ]
         },
         "options": {}
@@ -1085,28 +1169,5 @@
     "executionOrder": "v1",
     "availableInMCP": false,
     "callerPolicy": "workflowsFromSameOwner"
-  },
-  "staticData": null,
-  "tags": [
-    {
-      "updatedAt": "2026-02-09T19:34:28.045Z",
-      "createdAt": "2026-02-09T19:34:28.045Z",
-      "id": "AijcuRqBTMqLlirL",
-      "name": "BizElevate"
-    },
-    {
-      "updatedAt": "2026-02-12T08:59:29.351Z",
-      "createdAt": "2026-02-12T08:59:29.351Z",
-      "id": "PfXZnRVSEfkirIfo",
-      "name": "MCP-Architecture"
-    },
-    {
-      "updatedAt": "2026-02-09T19:34:28.087Z",
-      "createdAt": "2026-02-09T19:34:28.087Z",
-      "id": "lCe4YlvpdJ0PrOS7",
-      "name": "Capability-2"
-    }
-  ],
-  "triggerCount": 0,
-  "versionId": "2562e89b-820a-4fad-a045-d9825b11199a"
+  }
 }
