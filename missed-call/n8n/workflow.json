@@ -1,0 +1,228 @@
+{
+  "name": "BizElevate Missed Call Recovery",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "missed-call",
+        "responseMode": "onReceived",
+        "responseData": "noData",
+        "options": {}
+      },
+      "id": "missed-call-webhook",
+      "name": "Missed Call Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "webhookId": "bmcr-missed-call"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Twilio StatusCallback POSTs form-encoded data\n// n8n parses the body into $json.body (or directly into $json in some versions)\nconst raw = $input.item.json.body || $input.item.json;\n\nconst callFrom     = (raw.From       || raw.from       || '').trim();\nconst callTo       = (raw.To         || raw.to         || '').trim();\nconst callSid      = (raw.CallSid    || raw.callSid    || '').trim();\nconst callStatus   = (raw.CallStatus || raw.callStatus || '').toLowerCase().trim();\nconst callTimestamp = raw.Timestamp  || new Date().toISOString();\n\nreturn [{ json: { callFrom, callTo, callSid, callStatus, callTimestamp } }];"
+      },
+      "id": "normalize-twilio",
+      "name": "Normalize Twilio Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-no-answer",
+              "leftValue": "={{ $json.callStatus }}",
+              "rightValue": "no-answer",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "cond-busy",
+              "leftValue": "={{ $json.callStatus }}",
+              "rightValue": "busy",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "filter-missed",
+      "name": "Filter: Missed Calls Only",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "check-phone-valid",
+              "leftValue": "={{ $json.callFrom }}",
+              "rightValue": "^(\\+?614|04)\\d{8}$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "phone-valid",
+      "name": "Phone Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<SUPABASE_URL>/rest/v1/call_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "<SUPABASE_SERVICE_KEY>" },
+            { "name": "Authorization", "value": "Bearer <SUPABASE_SERVICE_KEY>" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "capability", "value": "missed_call" },
+            { "name": "client_id", "value": "smile-dental" },
+            { "name": "call_id", "value": "={{ $json.callSid }}" },
+            { "name": "patient_phone", "value": "={{ $json.callFrom }}" },
+            { "name": "call_status", "value": "missed" },
+            { "name": "sms_sent", "value": "true" },
+            { "name": "notes", "value": "={{ 'CallStatus: ' + $json.callStatus + ' | To: ' + $json.callTo }}" }
+          ]
+        },
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "id": "write-supabase",
+      "name": "Write to Supabase",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 180]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/AC907df5d9b5370eb5dd779a5b77754374/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "From", "value": "+61485004338" },
+            { "name": "To", "value": "={{ $('Phone Valid?').item.json.callFrom }}" },
+            { "name": "Body", "value": "=Hi, we missed your call at Smile Dental Campsie. We would love to help - call us back on +61485004338 or reply to book an appointment." }
+          ]
+        },
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "id": "send-sms",
+      "name": "Send SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 180],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Vpy229UTG1RYrPP0",
+          "name": "Twilio Basic Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<SUPABASE_URL>/rest/v1/call_logs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "<SUPABASE_SERVICE_KEY>" },
+            { "name": "Authorization", "value": "Bearer <SUPABASE_SERVICE_KEY>" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "capability", "value": "missed_call" },
+            { "name": "client_id", "value": "smile-dental" },
+            { "name": "call_id", "value": "={{ $json.callSid }}" },
+            { "name": "patient_phone", "value": "={{ $json.callFrom }}" },
+            { "name": "call_status", "value": "missed" },
+            { "name": "sms_sent", "value": "false" },
+            { "name": "notes", "value": "={{ 'Invalid AU phone - no SMS sent. CallStatus: ' + $json.callStatus + ' | From: ' + $json.callFrom }}" }
+          ]
+        },
+        "options": {}
+      },
+      "onError": "continueRegularOutput",
+      "id": "write-supabase-no-phone",
+      "name": "Write to Supabase \u2014 No Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 440]
+    }
+  ],
+  "connections": {
+    "Missed Call Webhook": {
+      "main": [
+        [{ "node": "Normalize Twilio Payload", "type": "main", "index": 0 }]
+      ]
+    },
+    "Normalize Twilio Payload": {
+      "main": [
+        [{ "node": "Filter: Missed Calls Only", "type": "main", "index": 0 }]
+      ]
+    },
+    "Filter: Missed Calls Only": {
+      "main": [
+        [{ "node": "Phone Valid?", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Phone Valid?": {
+      "main": [
+        [{ "node": "Write to Supabase", "type": "main", "index": 0 }],
+        [{ "node": "Write to Supabase \u2014 No Phone", "type": "main", "index": 0 }]
+      ]
+    },
+    "Write to Supabase": {
+      "main": [
+        [{ "node": "Send SMS", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

@@ -2,8 +2,8 @@
 
 **Capability:** missed_call
 **Product Name:** BizElevate Missed Call Recovery (BMCR)
-**Status:** In Development (design phase)
-**Version:** 0.1
+**Status:** Workflow deployed — pending Supabase + Twilio activation
+**Version:** 0.2
 
 ---
 
@@ -12,6 +12,7 @@
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1 | 2026-03-06 | Initial playbook created from BMCR Strategy Report |
+| 0.2 | 2026-03-07 | n8n workflow built and deployed (ID: W9lssqC5Jvd3nIVo). 7 nodes. JSON saved to `missed-call/n8n/workflow.json`. |
 
 ---
 
@@ -156,6 +157,44 @@ Options:
 
 ---
 
+## 7b. Phase 1 Activation Checklist
+
+**n8n Workflow ID:** `W9lssqC5Jvd3nIVo`
+**Webhook URL (once active):** `https://bizelevate1.app.n8n.cloud/webhook/missed-call`
+
+### Step 1: Fill Supabase Placeholders
+
+Open the workflow in n8n → edit these 2 nodes:
+
+**"Write to Supabase" and "Write to Supabase — No Phone" nodes:**
+| Placeholder | Replace with |
+|-------------|-------------|
+| `<SUPABASE_URL>` | Your Supabase project URL (from secrets.local.json) |
+| `<SUPABASE_SERVICE_KEY>` | Your Supabase service_role key (from secrets.local.json) |
+
+Both nodes need the same values. Update `url`, `apikey` header, and `Authorization` header.
+
+### Step 2: Activate Workflow
+
+Click **Activate** toggle in n8n. Confirm webhook URL is:
+`https://bizelevate1.app.n8n.cloud/webhook/missed-call`
+
+### Step 3: Configure Twilio StatusCallback
+
+In Twilio Console → Phone Numbers → Active Numbers → click `+61485004338`:
+- Set **Status Callback URL** to: `https://bizelevate1.app.n8n.cloud/webhook/missed-call`
+- Method: HTTP POST
+- Events: `no-answer`, `busy`, `failed`
+
+### Step 4: Test
+
+Call `+61485004338` from your mobile. Let it ring out. Within 10 seconds you should:
+1. Receive SMS: "Hi, we missed your call at Smile Dental Campsie..."
+2. See execution in n8n Executions tab
+3. See row in Supabase `call_logs` with `capability='missed_call'`, `sms_sent=true`
+
+---
+
 ## 8. Demo Script
 
 1. "Let me show you what happens when your clinic misses a call"
@@ -181,10 +220,13 @@ Options:
 ## 10. Build Phases
 
 ### Phase 1 — MVP (Demo-Ready)
-- [ ] n8n workflow: Twilio webhook → Filter → SMS → Supabase log
-- [ ] SMS template (1 default)
-- [ ] Supabase logging (capability=missed_call)
-- [ ] Demo tested with real Twilio number
+- [x] n8n workflow built and deployed — ID: `W9lssqC5Jvd3nIVo` (7 nodes, inactive)
+- [x] SMS template (1 default) — hardcoded in Send SMS node
+- [x] Supabase logging nodes (capability=missed_call) — placeholder URLs, not yet live
+- [ ] Fill Supabase placeholders in n8n workflow (`<SUPABASE_URL>`, `<SUPABASE_SERVICE_KEY>`)
+- [ ] Configure Twilio StatusCallback URL to point at n8n webhook
+- [ ] Activate workflow in n8n
+- [ ] Demo tested with real Twilio number → SMS received + Supabase row confirmed
 
 ### Phase 2 — Client-Ready
 - [ ] Multi-client routing via Supabase phone number lookup
