@@ -878,14 +878,81 @@ The app is capability-aware from day one. When Missed Call Recovery is live:
 
 ## Next Capabilities (Post-Demo)
 
-| Capability | What it adds | Complexity | Management App impact |
-|-----------|-------------|-----------|----------------------|
-| **Supabase audit log** | Every call logged for reporting | Low — add HTTP node to n8n | Unblocks Phase 6 |
-| **Management app (MVP)** | Client dashboard on Supabase data | Medium — Supabase Studio first, Next.js later | IS the Phase 6 deliverable |
-| Staff SMS alert | After urgent/emergency classification, SMS to clinic owner | Low — add Twilio node after Sheets write | Adds `staff_alerted` column to audit |
-| **Missed call recovery** | Detect + recover missed calls via VAPI outbound | Medium — VAPI API polling + separate workflow | Adds `missed_call` capability row to app |
-| Appointment change/cancel | Handle "I need to change my appointment" intents | Medium — new VAPI intent + n8n routing | Adds new capability tab to app |
-| After-hours triage | Different agent behaviour outside business hours | Low — hours check in normalisation | Adds `after_hours` flag to audit |
-| Multi-clinic / multi-tenant | One platform, many clients | Medium — `client_id` routing already in schema | App shows per-client filtered view |
+### Status Overview
 
-> **Bold items** are the immediate priority — they form the product story: demo → audit → app → sell.
+| Capability | Status | Directory |
+|-----------|--------|-----------|
+| Appointment Concierge | **LIVE (demo-ready)** | `appointment-concierge/` |
+| Missed Call Recovery | **In Development** | `missed-call/` |
+| Management App (MVP) | Planned — Phase 6 | `appointment-concierge/PLAYBOOK.md#phase-6` |
+| Staff SMS Alert | Planned | — |
+| Appointment Change/Cancel | Future | — |
+| After-Hours Triage | Future | — |
+
+---
+
+### Missed Call Recovery (BMCR) — In Development
+
+**What it does:** Detects missed calls via Twilio StatusCallback → fires instant SMS text-back → logs to Supabase `call_logs` with `capability='missed_call'`.
+
+**Architecture:**
+```
+Twilio no-answer → n8n webhook → Filter → Normalize → Phone Valid?
+                                                      ↓ YES
+                                             Send SMS + Log Supabase
+                                                      ↓ NO
+                                                  Log Supabase only
+```
+
+**Tech:** Twilio (trigger + SMS), n8n (orchestration), Supabase (audit)
+**No VAPI required** — outbound SMS only, no AI voice.
+
+**Pricing:**
+- v1 flat: $349/mo (same as Appointment Concierge)
+- v2 tiered: $299 (≤100 calls), $499 (≤300 calls), custom (enterprise)
+- **Bundle:** $599/mo for both capabilities
+
+**Target:** Same client base — 1–3 chair AU dental clinics.
+**TAM:** 3,000–4,200 practices (50–60% of ~6,500 AU total).
+**Guarantee:** 30-day performance-backed deployment.
+
+**Positioning:** "We turn your missed calls into booked appointments automatically."
+Frame as **practice growth**, not automation.
+
+**Integration with Appointment Concierge:**
+| Scenario | Capability |
+|----------|------------|
+| Patient calls during hours, answered | Appointment Concierge (VAPI) |
+| Patient calls, no answer / missed | Missed Call Recovery (Twilio SMS) |
+| Patient replies to SMS text-back | Route to Appointment Concierge intake (Phase 2) |
+
+**Next build steps:**
+1. Build n8n workflow (Claude Code)
+2. Configure Twilio StatusCallback on demo number (you)
+3. Test end-to-end with real missed call (you)
+4. See `missed-call/PLAYBOOK.md` for full detail
+
+---
+
+### Management App (MVP) — Planned
+
+**What it does:** Client-facing dashboard showing all captured calls, SMS sent, urgency breakdown, and missed-call volume. Powered by Supabase data already being written.
+
+**Stack (MVP):** Supabase Studio (no-code) → Next.js/Vercel (v2)
+**Scope:** Per-client filtered view of `call_logs`, filterable by `capability` and `created_at`.
+**Sells as:** "The foundation layer — clients see their AI working."
+
+---
+
+### Full Capability Roadmap
+
+| Priority | Capability | Complexity | Revenue Impact |
+|----------|-----------|-----------|----------------|
+| 1 | **Missed Call Recovery** | Low-Medium | Direct ($349/mo per client) |
+| 2 | **Management App MVP** | Medium | Retention + upsell |
+| 3 | Staff SMS Alert | Low | Upgrade trigger |
+| 4 | Appointment Change/Cancel | Medium | Reduces inbound volume |
+| 5 | After-Hours Triage | Low | After-hours coverage |
+| 6 | Multi-tenant routing | Medium | Scale prerequisite |
+
+> **Product story:** Appointment Concierge + Missed Call Recovery + Management App = the complete "missed no call, booked every patient" pitch. All three together form the sellable v1 product suite.
