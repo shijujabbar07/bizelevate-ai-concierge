@@ -2,8 +2,8 @@
 
 **Capability:** missed_call
 **Product Name:** BizElevate Missed Call Recovery (BMCR)
-**Status:** Workflow deployed — pending Supabase + Twilio activation
-**Version:** 0.2
+**Status:** ACTIVE — ready for testing
+**Version:** 0.3
 
 ---
 
@@ -13,6 +13,7 @@
 |---------|------|--------|
 | 0.1 | 2026-03-06 | Initial playbook created from BMCR Strategy Report |
 | 0.2 | 2026-03-07 | n8n workflow built and deployed (ID: W9lssqC5Jvd3nIVo). 7 nodes. JSON saved to `missed-call/n8n/workflow.json`. |
+| 0.3 | 2026-03-07 | Supabase credentials injected via API. Workflow activated. n8n folders organised. Ready for demo testing. |
 
 ---
 
@@ -220,13 +221,13 @@ Call `+61485004338` from your mobile. Let it ring out. Within 10 seconds you sho
 ## 10. Build Phases
 
 ### Phase 1 — MVP (Demo-Ready)
-- [x] n8n workflow built and deployed — ID: `W9lssqC5Jvd3nIVo` (7 nodes, inactive)
+- [x] n8n workflow built and deployed — ID: `W9lssqC5Jvd3nIVo` (7 nodes)
 - [x] SMS template (1 default) — hardcoded in Send SMS node
-- [x] Supabase logging nodes (capability=missed_call) — placeholder URLs, not yet live
-- [ ] Fill Supabase placeholders in n8n workflow (`<SUPABASE_URL>`, `<SUPABASE_SERVICE_KEY>`)
-- [ ] Configure Twilio StatusCallback URL to point at n8n webhook
-- [ ] Activate workflow in n8n
-- [ ] Demo tested with real Twilio number → SMS received + Supabase row confirmed
+- [x] Supabase credentials injected via API (no placeholders remaining)
+- [x] Workflow ACTIVE in n8n + n8n folders organised (Capabilities/Missed Call Recovery)
+- [ ] Configure Twilio StatusCallback URL -> https://bizelevate1.app.n8n.cloud/webhook/missed-call
+
+- [ ] Demo tested: call rings out -> SMS received + Supabase row confirmed
 
 ### Phase 2 — Client-Ready
 - [ ] Multi-client routing via Supabase phone number lookup
