@@ -1,10 +1,89 @@
 # BizElevate AI Concierge Delivery Playbook — Appointment Concierge
 
-**Purpose**: Repeatable, engineer-proof playbook for BizElevate AI Concierge builds. Every step is concrete, every prompt is copy-pasteable, every gate is binary pass/fail.
+**Capability:** appointment_concierge
+**Status:** Demo-ready (v2.1 active)
+**Version:** v1.3
 
-**Project**: Appointment Request Concierge — inbound voice call → data capture → SMS confirmation
+---
 
-**Lifecycle** (6 phases): Architecture + Scope (Phase 0) → n8n Workflow Deployment (Phase 1) → Google Sheets Setup (Phase 2) → VAPI Agent Configuration (Phase 3) → Integration Testing (Phase 4) → Demo Preparation (Phase 5)
+## 0. Why This Exists — Business Context
+
+### The problem it solves
+
+A 2-chair dental clinic runs on a tight team. The receptionist is often also a dental assistant — gloved up, chairside, unable to answer the phone. When a patient calls to book an appointment and no one picks up, one of three things happens:
+
+1. They leave a voicemail the receptionist will listen to at 5pm, details half-missing
+2. They hang up and try the clinic down the road
+3. They just give up
+
+Every missed appointment call is **$200–$400 in lost revenue** — the average value of a dental appointment. A busy clinic might miss 5–15 calls a week. That's $1,000–$6,000 a week walking out the door silently.
+
+The receptionist doesn't know how many calls they're missing. There's no log. No visibility. Just silence.
+
+---
+
+### What this capability does
+
+The AI Appointment Concierge is a voice assistant named Alex that answers every inbound call — every time, instantly, professionally.
+
+**When a patient calls:**
+1. Alex answers: *"Hi, you've reached Smile Dental Campsie. How can I help you today?"*
+2. Alex collects: patient name, phone number, preferred appointment time, reason for visit
+3. Alex responds: *"Perfect — we've got your request. A team member will call you within 2 hours to confirm your appointment."*
+4. Patient hangs up and receives an SMS within seconds confirming the request was received
+
+**When staff are free:**
+1. They open their appointment request list (Google Sheet or dashboard)
+2. Every request is there — name, number, time preference, reason, urgency (routine / urgent / emergency)
+3. They call the patient back to confirm the slot — one simple outbound call per request
+4. No voicemails to decode. No gaps. No missed requests.
+
+---
+
+### What changes for the clinic
+
+| Before | After |
+|--------|-------|
+| Phone rings, no one answers | Alex answers every call, every time |
+| Patient leaves voicemail or hangs up | Patient gets SMS confirmation within seconds |
+| Receptionist listens to voicemails at end of day | Staff open a clean list of requests, sorted by urgency |
+| No visibility into missed call volume | Every request logged with timestamp, reason, urgency |
+| Emergency calls mixed with routine ones | Emergency flagged immediately (AI classifies urgency) |
+
+---
+
+### Why clinics pay for this
+
+- They don't need to change their phone number
+- They don't need new software or hardware
+- No staff training required
+- Setup takes one day
+- The AI works 24/7, never calls in sick, never puts patients on hold
+
+**The pitch:** *"You're already paying for every missed call with lost revenue. This costs less than one missed appointment per month and captures all of them."*
+
+---
+
+### How it fits with Missed Call Recovery
+
+The Appointment Concierge handles calls that **reach the AI**. Missed Call Recovery handles calls that **don't get answered at all** (after hours, overflow, second line). Together they cover 100% of inbound call scenarios:
+
+```
+Patient calls
+  ├── AI answers (business hours)  → Appointment Concierge
+  └── No answer (after hours / overflow) → Missed Call Recovery SMS
+```
+
+Both feed into the same dashboard. One view. Complete picture.
+
+---
+
+### The demo in 3 minutes
+
+1. Call the clinic number — Alex answers, books an appointment
+2. Show the SMS confirmation received on your phone
+3. Show the Google Sheet / dashboard — new row, urgency classified
+4. *"That's it. Every patient handled. No staff involved."*
 
 ---
 

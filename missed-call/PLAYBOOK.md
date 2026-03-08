@@ -7,6 +7,111 @@
 
 ---
 
+## 0. Why This Exists — Business Context
+
+### The problem it solves
+
+Think about the last time you called a business, no one answered, and you got silence or voicemail. Did you call back? Most people don't.
+
+For a dental clinic, a missed call that goes cold is a patient who books somewhere else. The clinic never knows it happened. There's no record. No follow-up. Just a ringing phone that nobody answered.
+
+This is the gap that Missed Call Recovery fills.
+
+---
+
+### What this capability does
+
+The moment a call goes unanswered — the phone rings out, no one picks up — the patient receives an SMS within **5–10 seconds**:
+
+> *"Hi, we missed your call at Smile Dental Campsie. We would love to help — call us back on +61 485 004 338 or reply to book an appointment."*
+
+That's it. Simple. Fast. Automatic.
+
+The caller instantly knows the clinic saw their call. They're no longer talking to silence — they have a number to call back, and an open door to reply. The clinic captures the lead before they call a competitor.
+
+Every missed call is also logged to the dashboard: caller number, time, SMS sent, outcome. For the first time, the clinic owner can see exactly how many calls they've been missing.
+
+---
+
+### How it actually works (non-technical)
+
+There is no AI voice involved here. No one speaks. The automation is triggered entirely by the phone system:
+
+1. Patient calls the clinic number
+2. The phone rings — nobody answers
+3. Twilio (the phone platform) detects the missed call and sends a signal to our system
+4. Our system sends an SMS to the caller **within seconds**
+5. The missed call is logged for reporting
+
+That's the entire flow. No complexity. No moving parts the clinic touches. It just works in the background.
+
+---
+
+### What changes for the clinic
+
+| Before | After |
+|--------|-------|
+| Phone rings, no one answers, patient hangs up | Patient gets SMS within 10 seconds |
+| No record of missed calls | Every missed call logged with timestamp |
+| Patient calls a competitor | Patient has a direct line back to the clinic |
+| Owner has no idea how many calls are missed | Dashboard shows missed-call volume weekly |
+
+---
+
+### Why clinics pay for this
+
+- **Zero effort** — the clinic does nothing. There's no button to press.
+- **No new number** — works on their existing phone number
+- **No hardware** — nothing to install
+- **Immediate ROI** — one recovered patient covers months of subscription
+- **Peace of mind** — front desk stops worrying about calls they missed
+
+**The pitch:** *"Every time your phone rings and no one answers, we send that caller an SMS in under 10 seconds. Watch."* [call the number, let it ring out, show SMS arriving]
+
+---
+
+### How it fits with Appointment Concierge
+
+Missed Call Recovery is the **safety net** underneath the Appointment Concierge:
+
+```
+Patient calls
+  ├── Answered (business hours + AI active) → Appointment Concierge takes request
+  └── Not answered (after hours / busy / overflow) → BMCR sends instant SMS
+```
+
+**Selling together:** When you demo both, the story becomes:
+
+> *"No matter when your patients call — day, night, busy, or after hours — they always get a response. The AI handles the calls it answers. We handle the calls it misses. You lose zero patients to silence."*
+
+**Bundle price:** $599/mo for both. Each standalone is $349/mo.
+
+---
+
+### The demo in 60 seconds
+
+1. Call the BMCR demo number from your mobile
+2. Let it ring — do not answer
+3. Hang up after 5–6 rings
+4. Watch your mobile — SMS arrives within 10 seconds
+5. *"That happened automatically. No staff. No delay. The patient knows we saw their call."*
+
+> **Note on demo setup:** BMCR works best on a dedicated second number (not the same number as Appointment Concierge). This lets you demo both independently without the AI intercepting the call first. One Twilio AU number costs ~$2/month.
+
+---
+
+### A second phone number — do you need it?
+
+**For demos:** Yes. You want to show BMCR without VAPI intercepting the call. A second number (BMCR-only, no AI voice) lets you demo the exact scenario: call rings out, SMS fires.
+
+**For real clients:** Depends on the clinic setup:
+- **Single line, VAPI active during hours:** Configure BMCR to fire after hours only (via Twilio time-of-day routing). One number, both capabilities.
+- **Two lines:** Main line gets the AI (Appointment Concierge). Overflow/secondary line gets BMCR. Cleaner and more resilient.
+
+Most 1–3 chair clinics only have one number. Start with that — after-hours BMCR on the same number — and upsell a second line later.
+
+---
+
 ## Change Log
 
 | Version | Date | Change |
