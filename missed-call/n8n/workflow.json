@@ -5,8 +5,6 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "missed-call",
-        "responseMode": "onReceived",
-        "responseData": "noData",
         "options": {}
       },
       "id": "missed-call-webhook",
@@ -15,7 +13,7 @@
       "typeVersion": 2,
       "position": [
         0,
-        300
+        304
       ],
       "webhookId": "bmcr-missed-call"
     },
@@ -28,8 +26,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
-        300
+        224,
+        304
       ]
     },
     {
@@ -41,6 +39,15 @@
             "typeValidation": "loose"
           },
           "conditions": [
+            {
+              "id": "cond-completed",
+              "leftValue": "={{ $json.callStatus }}",
+              "rightValue": "completed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
             {
               "id": "cond-no-answer",
               "leftValue": "={{ $json.callStatus }}",
@@ -58,6 +65,24 @@
                 "type": "string",
                 "operation": "equals"
               }
+            },
+            {
+              "id": "cond-canceled",
+              "leftValue": "={{ $json.callStatus }}",
+              "rightValue": "canceled",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "cond-failed",
+              "leftValue": "={{ $json.callStatus }}",
+              "rightValue": "failed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "or"
@@ -69,8 +94,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        440,
-        300
+        448,
+        304
       ]
     },
     {
@@ -101,8 +126,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        660,
-        300
+        672,
+        304
       ]
     },
     {
@@ -127,7 +152,6 @@
           ]
         },
         "sendBody": true,
-        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
@@ -162,15 +186,15 @@
         },
         "options": {}
       },
-      "onError": "continueRegularOutput",
       "id": "write-supabase",
       "name": "Write to Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         880,
-        180
-      ]
+        192
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -198,21 +222,21 @@
         },
         "options": {}
       },
-      "onError": "continueRegularOutput",
       "id": "send-sms",
       "name": "Send SMS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1100,
-        180
+        1104,
+        192
       ],
       "credentials": {
         "httpBasicAuth": {
           "id": "Vpy229UTG1RYrPP0",
           "name": "Twilio Basic Auth"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -236,7 +260,6 @@
           ]
         },
         "sendBody": true,
-        "contentType": "json",
         "bodyParameters": {
           "parameters": [
             {
@@ -271,15 +294,15 @@
         },
         "options": {}
       },
-      "onError": "continueRegularOutput",
       "id": "write-supabase-no-phone",
       "name": "Write to Supabase — No Phone",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
         880,
-        440
-      ]
+        448
+      ],
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
@@ -350,6 +373,6 @@
   "settings": {
     "executionOrder": "v1",
     "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
+    "availableInMCP": true
   }
 }
