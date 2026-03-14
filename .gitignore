@@ -47,6 +47,8 @@ secrets.local.json
 # Claude Code
 .claude/sessions/
 .claude/cache/
+.claude/worktrees/
+.claude/settings.json
 **/.claude/settings.local.json
 
 # Windows reserved device file

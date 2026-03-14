@@ -1,4 +1,4 @@
-# Implementation Checklist — Missed Call Recovery
+# Implementation Checklist — CustomerReach Respond
 
 **Status:** In Development
 **Target:** Demo-ready

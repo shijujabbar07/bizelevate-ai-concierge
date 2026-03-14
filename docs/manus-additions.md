@@ -1,15 +1,15 @@
 # Manus Document Additions — BizElevate Strategy
 
-Paste-ready content for adding to the BMCR Strategy document on Manus.
-Two sections to add: AI Concierge and Management App (Foundation Layer).
+Paste-ready content for adding to the CustomerReach Strategy document on Manus.
+Two sections to add: CustomerReach Answer and Management App (Foundation Layer).
 
 ---
 
-## SECTION: AI Appointment Concierge
+## SECTION: CustomerReach Answer
 
 ### What It Is
 
-The AI Appointment Concierge is an inbound voice agent that answers calls, collects appointment requests, and sends instant SMS confirmations — without any staff involvement.
+CustomerReach Answer is an inbound AI voice agent that answers calls, collects appointment requests, and sends instant SMS confirmations — without any staff involvement.
 
 When a patient calls and the front desk is busy, on hold, or unavailable, the AI agent steps in:
 
@@ -66,7 +66,7 @@ The system runs on BizElevate's cloud infrastructure. Clinics need no software, 
 |------|-------|---------|
 | Starter | $349/mo | Unlimited inbound calls, SMS confirmations, urgency classification, Google Sheets log |
 | Pro | $499/mo | Everything in Starter + BizElevate dashboard, priority support |
-| Bundle | $599/mo | Concierge + Missed Call Recovery |
+| Bundle | $499/mo | CustomerReach Answer + CustomerReach Respond |
 
 **30-day performance guarantee.** If the system doesn't capture more appointment requests in the first 30 days than before, full refund.
 
@@ -121,13 +121,13 @@ The Management App is the retention layer. It's what turns a month-to-month subs
 
 ### What It Shows
 
-**Appointment Concierge view:**
+**CustomerReach Answer view:**
 - Total calls captured today / this week / this month
 - List of all requests (name, phone, preferred time, urgency, SMS sent: yes/no)
 - Filter by urgency (emergency first)
 - Status column: new → contacted → confirmed (updated by staff)
 
-**Missed Call Recovery view:**
+**CustomerReach Respond view:**
 - Total missed calls detected
 - SMS text-backs sent
 - Response rate (did the caller reply?)
@@ -189,7 +189,7 @@ Once a client is on the platform and their staff use the dashboard daily, switch
 
 ### Current Status
 
-- **Data infrastructure live** — Supabase `call_logs` populated by both Appointment Concierge and Missed Call Recovery workflows
+- **Data infrastructure live** — Supabase `call_logs` populated by both CustomerReach Answer and CustomerReach Respond workflows
 - **Schema designed for multi-tenant** — `client_id` field on every row
 - **Supabase Studio** available for demo use immediately
 - **Next.js build** planned for Month 3 (post first 2–3 paying clients)

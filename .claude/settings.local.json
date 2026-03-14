@@ -4,7 +4,28 @@
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:www.n8n-mcp.com)",
-      "Bash(gh repo view:*)"
+      "Bash(gh repo view:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nAdd secrets management and sanitize all tracked files\n\n- Add .mcp.json \\(committed template with placeholders only\\)\n- Add .env.example and secrets.schema.json for local setup\n- Update .gitignore to exclude .mcp.local.json, secrets.local.json\n- Add Local Secrets Management section to CLAUDE.md\n- Add Local Secrets Quickstart to docs/README.md\n- Add secrets callout to IMPLEMENTATION.md, n8n/SETUP.md, vapi/SETUP.md\n- All real secrets replaced with <PLACEHOLDER> tokens in tracked files\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git stash:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)",
+      "Bash(git credential-manager:*)",
+      "Bash(git config:*)",
+      "Bash(node -e:*)",
+      "Bash(curl:*)",
+      "Bash(set:*)",
+      "mcp__n8n-mcp__tools_documentation",
+      "Bash(npx n8n-mcp:*)",
+      "Bash(python3:*)",
+      "Bash(git commit:*)",
+      "Bash(API_KEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIyNTc5NDU1Mi1hYzVlLTQ5MDgtOTYyOC03MDI4Mjc0MTk0MjMiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzcxMjIyNzY0LCJleHAiOjE3NzYzNDgwMDB9.CnoY38OgP-bDfK4J9Fj0KcQIQxVucQauTIU0cxwskfM\")",
+      "Bash(__NEW_LINE_150ac6e5c90f2d67__ curl -s --ssl-no-revoke \"https://bizelevate1.app.n8n.cloud/api/v1/executions?workflowId=HKHwb6mpWdvGcR070E8or&limit=5\" -H \"X-N8N-API-KEY: $API_KEY\" )",
+      "Bash(VAPI_SECRET=\"bze_vapi_2024_x7k9m2p4q8r1s5t3\")",
+      "Bash(__NEW_LINE_cb6f7daf3ebf747b__ curl -s --ssl-no-revoke -X POST \"https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment\" -H \"Content-Type: application/json\" -H \"x-vapi-secret: $VAPI_SECRET\" -d '{:*)",
+      "Bash(node \"/c/Users/Shiju Jabbar/OneDrive/Documents/Shiju/Projects/BizElevate/ClaudeCode/.claude/parse-exec-detail.js\")",
+      "Bash(__NEW_LINE_d28e26c8520c84eb__ curl -s --ssl-no-revoke -X POST \"https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment\" -H \"Content-Type: application/json\" -H \"x-vapi-secret: $VAPI_SECRET\" -d '{:*)"
     ]
   }
 }

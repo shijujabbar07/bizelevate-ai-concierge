@@ -188,6 +188,8 @@ POST https://api.openai.com/v1/chat/completions
 | H | Status | Static value | new |
 | I | Notes | Empty | |
 
+> **Note:** The `action_status` and `notes` fields in the Supabase `call_logs` table are **not written by this n8n workflow**. They are managed exclusively by the BizElevate dashboard (receptionist interface). n8n must never overwrite these columns on existing rows.
+
 ---
 
 ## 4. n8n → Twilio SMS Request
@@ -294,7 +296,7 @@ Hi {FirstName}, thanks for calling. We received your appointment request for {Re
 
 This contract can be adapted for:
 
-1. **Capability 3 (Missed Call Recovery)**
+1. **Capability 3 (CustomerReach Respond)**
    - Same Google Sheets structure
    - Different VAPI trigger (missed call event)
    - Modified SMS template
@@ -325,3 +327,4 @@ This contract can be adapted for:
 | Version | Date | Changes |
 |---------|------|---------|
 | 1.0 | 2024-01-15 | Initial contract |
+| 1.1 | 2026-03-08 | Added `action_status` field to Supabase schema (dashboard-managed, not written by n8n); added note to Google Sheets mapping |

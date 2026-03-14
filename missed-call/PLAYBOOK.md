@@ -1,9 +1,9 @@
-# Missed Call Recovery — Capability Playbook
+# CustomerReach Respond — Capability Playbook
 
 **Capability:** missed_call
-**Product Name:** BizElevate Missed Call Recovery (BMCR)
+**Product Name:** CustomerReach Respond
 **Status:** ACTIVE — ready for testing
-**Version:** 0.3
+**Version:** 0.5
 
 ---
 
@@ -15,7 +15,7 @@ Think about the last time you called a business, no one answered, and you got si
 
 For a dental clinic, a missed call that goes cold is a patient who books somewhere else. The clinic never knows it happened. There's no record. No follow-up. Just a ringing phone that nobody answered.
 
-This is the gap that Missed Call Recovery fills.
+This is the gap that CustomerReach Respond fills.
 
 ---
 
@@ -33,17 +33,78 @@ Every missed call is also logged to the dashboard: caller number, time, SMS sent
 
 ---
 
-### How it actually works (non-technical)
+### Which number do patients call? — The Honest Answer
 
-There is no AI voice involved here. No one speaks. The automation is triggered entirely by the phone system:
+CustomerReach Respond only fires when a missed call passes through **Twilio**. This means the clinic needs at least one Twilio number in their setup. How that fits with their existing phone depends on their situation.
 
-1. Patient calls the clinic number
-2. The phone rings — nobody answers
-3. Twilio (the phone platform) detects the missed call and sends a signal to our system
-4. Our system sends an SMS to the caller **within seconds**
-5. The missed call is logged for reporting
+**There are three setup options. Most clinics start with Option 1.**
 
-That's the entire flow. No complexity. No moving parts the clinic touches. It just works in the background.
+See **[docs/PHONE-ONBOARDING.md](../docs/PHONE-ONBOARDING.md)** for the complete guide
+covering all Australian phone types, step-by-step instructions, objection handling,
+and the per-client setup decision tree. Know this document before any sales call.
+
+---
+
+### Option 1 — Dedicated Second Number (Recommended, Zero Friction)
+
+A new Twilio AU number is provisioned. The clinic's existing number is untouched.
+The new number is positioned as their *"after-hours line"* or *"new patient booking line"*
+and added to their Google Business Profile and website.
+
+- **Go-live time:** Same day
+- **Carrier involvement:** None
+- **Risk:** Zero
+- **Suitable for:** Every first client
+
+---
+
+### Option 2 — Conditional Call Forwarding (Respond on Existing Number)
+
+The clinic keeps their existing number. A forwarding rule is set so that when their
+existing line has no answer (~20 seconds), it forwards to the Twilio number. Twilio
+plays a brief message and fires the SMS.
+
+On most Australian landlines, this is set by dialling `*62*04XXXXXXXX#` from the phone.
+On VoIP systems (3CX, RingCentral, Vonex), it is configured in the admin panel.
+Takes 5 minutes. Reversible instantly.
+
+- **Go-live time:** Same day
+- **Carrier involvement:** None (self-service)
+- **Risk:** Minimal — cancellable with one code
+- **Suitable for:** Client 2+ who want Respond on their main number without porting
+
+---
+
+### Option 3 — Number Porting to Twilio (Full Integration)
+
+The clinic's existing number ports to Twilio. Everything runs through one number —
+missed call SMS, after-hours AI, time-based routing. Best long-term outcome.
+
+- **Go-live time:** 5–15 business days (ACMA porting process)
+- **Carrier involvement:** Yes — carrier must release the number
+- **Risk:** Small downtime window during port (schedule for Friday evening)
+- **Suitable for:** Established clients who have already seen value and want full integration
+
+---
+
+### How it actually works — real-life scenario
+
+**Option 2 in action — busy Tuesday morning:**
+
+> 9:14am — A new patient calls Smile Dental on 03 9123 4567 (unchanged main number).
+> The receptionist is with a patient. The phone rings for 20 seconds. Nobody picks up.
+> The landline's forwarding rule kicks in — call forwards to the Twilio number.
+> Twilio plays: *"Thanks for calling. We missed your call — we'll send you a text now."*
+> 9:14am + 12 seconds — The patient's mobile receives an SMS:
+> *"Hi, we missed your call at Smile Dental. We're with patients — reply BOOK and we'll call you right back."*
+> The patient's original call was to the clinic's unchanged number. They never knew about Twilio.
+
+**Option 1 in action — after-hours:**
+
+> 7:30pm — A prospective patient Googles "dentist Campsie" and finds Smile Dental.
+> Google Business Profile shows two numbers: main (03 9123 4567) and "After-hours bookings" (04XX XXX XXX).
+> They call the after-hours number. CustomerReach Answer (VAPI) answers. Alex takes their details.
+> Alternatively, if VAPI misses the call: CustomerReach Respond fires an SMS automatically.
 
 ---
 
@@ -70,45 +131,64 @@ That's the entire flow. No complexity. No moving parts the clinic touches. It ju
 
 ---
 
-### How it fits with Appointment Concierge
+### How it fits with CustomerReach Answer
 
-Missed Call Recovery is the **safety net** underneath the Appointment Concierge:
+CustomerReach Respond is the **safety net** underneath CustomerReach Answer. Together, they cover every possible call scenario from a single phone number:
 
 ```
-Patient calls
-  ├── Answered (business hours + AI active) → Appointment Concierge takes request
-  └── Not answered (after hours / busy / overflow) → BMCR sends instant SMS
+Patient calls the clinic number
+  │
+  ├── During business hours
+  │     ├── Staff answers → normal call, no automation
+  │     └── No answer (busy, lunch, all lines busy)
+  │           └── Respond fires → SMS within 10 seconds
+  │
+  └── After hours / weekends
+        ├── VAPI active → CustomerReach Answer answers
+        │     └── Alex takes appointment request → SMS confirmation
+        └── VAPI unavailable (rare)
+              └── Respond fires as safety net → SMS within 10 seconds
 ```
+
+**Real-life example with both active — Monday morning at a 2-chair clinic:**
+
+> 8:02am — James calls. Receptionist is setting up. No answer. **Respond fires: SMS in 9 seconds.**
+> 8:15am — Sarah calls. Receptionist answers. Normal call. No automation needed.
+> 8:31am — Michael calls. Receptionist is with a patient. No answer. **Respond fires: SMS in 8 seconds.**
+> 1:07pm — Emma calls during lunch break. No answer. **Respond fires.**
+> 6:45pm — David calls after close. VAPI answers. **CustomerReach Answer takes appointment request. SMS sent.**
+>
+> Result: 4 out of 5 calls that could have been lost → recovered automatically. Zero staff action required for any of them.
 
 **Selling together:** When you demo both, the story becomes:
 
 > *"No matter when your patients call — day, night, busy, or after hours — they always get a response. The AI handles the calls it answers. We handle the calls it misses. You lose zero patients to silence."*
 
-**Bundle price:** $599/mo for both. Each standalone is $349/mo.
+**Bundle price:** $599/mo for CustomerReach Answer + CustomerReach Respond. Each standalone is $349/mo.
 
 ---
 
 ### The demo in 60 seconds
 
-1. Call the BMCR demo number from your mobile
+1. Call the CustomerReach Respond demo number from your mobile
 2. Let it ring — do not answer
 3. Hang up after 5–6 rings
 4. Watch your mobile — SMS arrives within 10 seconds
 5. *"That happened automatically. No staff. No delay. The patient knows we saw their call."*
 
-> **Note on demo setup:** BMCR works best on a dedicated second number (not the same number as Appointment Concierge). This lets you demo both independently without the AI intercepting the call first. One Twilio AU number costs ~$2/month.
+> **Note on demo setup:** CustomerReach Respond works best on a dedicated second number (not the same number as CustomerReach Answer). This lets you demo both independently without the AI intercepting the call first. One Twilio AU number costs ~$2/month.
 
 ---
 
 ### A second phone number — do you need it?
 
-**For demos:** Yes. You want to show BMCR without VAPI intercepting the call. A second number (BMCR-only, no AI voice) lets you demo the exact scenario: call rings out, SMS fires.
+**For demos:** Yes. You want to show CustomerReach Respond without VAPI intercepting the call. A second number (Respond-only, no AI voice) lets you demo the exact scenario: call rings out, SMS fires.
 
 **For real clients:** Depends on the clinic setup:
-- **Single line, VAPI active during hours:** Configure BMCR to fire after hours only (via Twilio time-of-day routing). One number, both capabilities.
-- **Two lines:** Main line gets the AI (Appointment Concierge). Overflow/secondary line gets BMCR. Cleaner and more resilient.
+- **Single line, VAPI active during hours:** Configure CustomerReach Respond to fire after hours only (via Twilio time-of-day routing). One number, both capabilities.
+- **Two lines:** Main line gets the AI (CustomerReach Answer). Overflow/secondary line gets CustomerReach Respond. Cleaner and more resilient.
 
-Most 1–3 chair clinics only have one number. Start with that — after-hours BMCR on the same number — and upsell a second line later.
+Most 1–3 chair clinics only have one number. Start with that — after-hours Respond on the same number — and upsell a second line later.
 
 ---
 
@@ -116,9 +196,11 @@ Most 1–3 chair clinics only have one number. Start with that — after-hours B
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1 | 2026-03-06 | Initial playbook created from BMCR Strategy Report |
+| 0.1 | 2026-03-06 | Initial playbook created from CustomerReach Respond Strategy Report |
 | 0.2 | 2026-03-07 | n8n workflow built and deployed (ID: W9lssqC5Jvd3nIVo). 7 nodes. JSON saved to `missed-call/n8n/workflow.json`. |
 | 0.3 | 2026-03-07 | Supabase credentials injected via API. Workflow activated. n8n folders organised. Ready for demo testing. |
+| 0.4 | 2026-03-12 | Architecture hardening. Multi-client routing live via `phone_number_map`. Client config driven from `clients` table. Workflow expanded to 10 nodes. Booking link in SMS. Section 7c added: client onboarding steps. |
+| 0.5 | 2026-03-12 | Respond Extensions. SMS Reply Handler workflow added (ID: `q4CYSzFYuYfp1eWa`): detects CALL/CALL ME → sets callback_requested=true. Booking link click tracking via Supabase Edge Function `book`. callLogId pre-generated in Prepare Context for correlation. Section 7d added. |
 
 ---
 
@@ -147,22 +229,45 @@ Frame as **practice growth**, not automation or tech.
 ### Flow (Happy Path)
 ```
 Caller rings → no answer → Twilio StatusCallback fires →
-n8n receives webhook → validate caller number →
-n8n sends SMS via Twilio → n8n writes to Supabase call_logs →
-n8n responds 200 OK
+n8n receives webhook → lookup client from phone_number_map →
+fetch client config → build SMS with tracking URL →
+validate caller number → send SMS → log to Supabase call_logs
+```
+
+### SMS Reply Flow
+```
+Patient replies CALL or CALL ME →
+Twilio inbound SMS webhook fires →
+n8n SMS Reply Handler receives POST →
+detect intent → lookup most recent call_log by patient_phone →
+PATCH call_log: reply_received=true, reply_intent=callback, callback_requested=true
+```
+
+### Booking Link Click Flow
+```
+Patient taps tracking URL in SMS →
+Supabase Edge Function `book` receives GET /{callLogId} →
+lookup call_log → fetch client booking_link →
+PATCH call_log: booking_link_clicked=true →
+302 redirect to booking_link
 ```
 
 ### Trigger Mechanism
 Twilio StatusCallback fires when a call reaches `CallStatus=no-answer` or `CallStatus=busy`.
 - Configured on the Twilio phone number (not on VAPI — no AI voice used here)
-- Webhook URL: `https://bizelevate1.app.n8n.cloud/webhook/missed-call`
+- Missed call webhook URL: `https://bizelevate1.app.n8n.cloud/webhook/missed-call`
+- SMS reply webhook URL: `https://bizelevate1.app.n8n.cloud/webhook/sms-reply`
 - Method: POST (Twilio sends form-encoded body)
 
 ### Data Flow
 ```
-Twilio Payload → n8n Normalize → Phone Valid? → Send SMS + Log Supabase
-                                              ↓ (invalid)
-                                         Log Supabase only (no SMS)
+Twilio StatusCallback → Normalize → Filter →
+  Lookup Client (phone_number_map) →
+  Fetch Client Config (clients) →
+  Prepare Context (generate callLogId, build tracking URL + SMS) →
+  Phone Valid?
+    ├── Valid: Write Supabase (with callLogId) → Send SMS (tracking URL)
+    └── Invalid: Write Supabase only (no SMS)
 ```
 
 ---
@@ -171,26 +276,51 @@ Twilio Payload → n8n Normalize → Phone Valid? → Send SMS + Log Supabase
 
 ### Node Sequence
 
+### Workflow: BizElevate Missed Call Recovery (ID: `W9lssqC5Jvd3nIVo`)
+
 | # | Node | Type | Purpose |
 |---|------|------|---------|
 | 1 | Missed Call Webhook | Webhook | Receive Twilio StatusCallback |
-| 2 | Filter: Missed Calls Only | IF | Pass only `no-answer` / `busy` calls |
-| 3 | Normalize Twilio Payload | Code | Extract caller number, timestamp, client_id |
-| 4 | Phone Valid? | IF | Check AU phone format regex |
-| 5 | Send SMS | HTTP Request | POST to Twilio SMS API |
-| 6 | Write to Supabase | HTTP Request | POST to call_logs (sms_sent=true) |
-| 7 | Write to Supabase — No Phone | HTTP Request | POST to call_logs (sms_sent=false) |
-| 8 | Respond 200 | Respond to Webhook | Acknowledge Twilio |
+| 2 | Normalize Twilio Payload | Code | Extract callFrom, callTo, callSid, callStatus |
+| 3 | Filter: Missed Calls Only | IF | Pass only `no-answer`, `busy`, `completed`, `canceled`, `failed` |
+| 4 | Lookup Client | HTTP GET | Query `phone_number_map` using Twilio `To` — returns client_id + capability |
+| 5 | Fetch Client Config | HTTP GET | Query `clients` using client_id — returns name, booking_link, owner_phone, timezone |
+| 6 | Prepare Context | Code | Merge call + config; generate `callLogId`; build tracking URL + SMS body |
+| 7 | Phone Valid? | IF | Check AU phone format regex against callFrom |
+| 8 | Write to Supabase | HTTP POST | Log to call_logs with pre-generated `id` + dynamic client_id (sms_sent=true) |
+| 9 | Send SMS | HTTP POST | POST to Twilio SMS API — From=twilioNumber, Body=smsBody (tracking URL embedded) |
+| 10 | Write to Supabase — No Phone | HTTP POST | Log to call_logs with pre-generated `id` (sms_sent=false, invalid number path) |
+
+### Workflow: BizElevate SMS Reply Handler (ID: `q4CYSzFYuYfp1eWa`)
+
+| # | Node | Type | Purpose |
+|---|------|------|---------|
+| 1 | SMS Reply Webhook | Webhook | Receive Twilio inbound SMS POST |
+| 2 | Normalize SMS | Code | Extract `from`, `to`, `body`, `msgSid` |
+| 3 | Detect Intent | Code | Classify body (`/^call( me)?$/i` → `callback`, else `other`); build update payload |
+| 4 | Lookup Call Log | HTTP GET | Find most recent `call_log` with matching `patient_phone` + `sms_sent=true` |
+| 5 | Extract Call Log ID | Code | Safe extraction of row ID from Supabase response; returns `[]` if no match (stops execution) |
+| 6 | Update Call Log | HTTP PATCH | Set `reply_received=true`, `reply_intent`, `callback_requested` |
+
+### Data Flow (Missed Call Recovery)
+```
+Twilio StatusCallback → Normalize → Filter →
+  Lookup Client (phone_number_map) →
+  Fetch Client Config (clients) →
+  Prepare Context (generate callLogId + tracking URL + SMS body) →
+  Phone Valid?
+    ├── Valid: Write Supabase (id=callLogId) → Send SMS (tracking URL in body)
+    └── Invalid: Write Supabase (id=callLogId, sms_sent=false)
+```
 
 ### Key Fields from Twilio StatusCallback
 
 | Twilio Field | Maps To | Notes |
 |---|---|---|
 | `From` | `patient_phone` | Caller's number |
-| `To` | Clinic number | Used to look up client_id |
-| `CallStatus` | Filter condition | `no-answer` or `busy` |
+| `To` | `phone_number_map.phone_number` | Lookup key — resolves client_id dynamically |
+| `CallStatus` | Filter condition | `no-answer`, `busy`, etc. |
 | `CallSid` | `call_id` | Unique call reference |
-| `Timestamp` | `created_at` | When call occurred |
 
 ### Phone Validation Regex
 ```
@@ -219,6 +349,31 @@ Otherwise, call us back on [Phone] or reply to book.
 – [Clinic Name] Team
 ```
 
+### Owner / Front Desk Notification (fires in parallel with patient SMS)
+
+**During hours:**
+```
+Missed call from [callerPhone] at [time].
+Patient SMS sent. View details: dashboard.bizelevate.app
+```
+
+**After hours:**
+```
+After-hours missed call from [callerPhone] at [time].
+Patient SMS sent. View in dashboard: dashboard.bizelevate.app
+```
+
+> These go to the clinic owner mobile or front desk number stored in `clients.owner_phone`.
+> Purpose: ensures the clinic team is aware in real-time, and drives them to the dashboard
+> to take action (call back, mark resolved). Both patient SMS and owner notification fire
+> from the same workflow execution — neither depends on the other succeeding.
+
+### WhatsApp Variant (Phase 2)
+
+Same templates, same Twilio API — prefix the `To` number with `whatsapp:`.
+Enabled per client via `clients.owner_channel = 'whatsapp'`.
+No workflow rebuild required.
+
 ---
 
 ## 5. Supabase Logging
@@ -227,39 +382,209 @@ Uses shared `call_logs` table (see `supabase/migrations/`).
 
 | Field | Value |
 |-------|-------|
-| `capability` | `missed_call` |
-| `client_id` | `smile-dental` (from Twilio number lookup) |
-| `call_id` | `{{ $json.CallSid }}` |
-| `patient_phone` | `{{ $json.From }}` |
+| `capability` | `missed_call` (from `phone_number_map` lookup — not hardcoded) |
+| `client_id` | Resolved dynamically via `phone_number_map` using Twilio `To` field |
+| `call_id` | Twilio `CallSid` |
+| `patient_phone` | Twilio `From` (caller's number) |
 | `call_status` | `missed` |
 | `sms_sent` | `true` / `false` |
-| `notes` | `CallStatus: {{ $json.CallStatus }}` |
+| `notes` | `CallStatus: {status} \| To: {twilioNumber}` |
+
+Interaction tracking fields (written by the SMS Reply Handler + redirect Edge Function):
+
+| Field | Written when | Workflow |
+|-------|-------------|---------|
+| `reply_received` | Patient sends any reply to the recovery SMS | SMS Reply Handler |
+| `reply_intent` | `callback` (CALL/CALL ME) or `other` | SMS Reply Handler |
+| `callback_requested` | Reply was CALL / CALL ME | SMS Reply Handler |
+| `booking_link_clicked` | Patient taps the tracking link | Supabase Edge Function `book` |
+| `converted` | Staff marks as resulting in a booking | Dashboard (manual) |
+
+**Booking link tracking:** The SMS includes a redirect URL (`/functions/v1/book/{callLogId}`) rather than the raw booking link. The `callLogId` is pre-generated in `Prepare Context` using `crypto.randomUUID()` and written to Supabase as the row `id` — so clicks can always be correlated back to the exact call record.
+
+> **Custom domain:** Currently `book.bizelevate.app` is not yet configured. The tracking URL is the Supabase function URL directly. Once `book.bizelevate.app` is pointed at the Edge Function, update the `TRACKING_BASE` constant in the `Prepare Context` node and re-push the workflow.
 
 ---
 
-## 6. Multi-Client Routing (Phase 2+)
+## 6. Multi-Client Routing — LIVE
 
-Each client gets their own Twilio number. The `To` field in the webhook identifies which client was called.
+The workflow is fully config-driven. There is no hardcoded client_id anywhere in the workflow.
 
-Options:
-1. **Single workflow, lookup table in Supabase:** `phone_numbers` table maps Twilio number → client_id
-2. **One workflow per client:** Simpler to demo, harder to scale
-3. **Single workflow, config Set node:** Works for up to ~5 clients hardcoded
+### How it works
 
-**Recommendation for v1:** Hardcode one client per demo. Phase 2: Supabase phone number lookup.
+Every Twilio StatusCallback includes a `To` field — the Twilio number that was called.
+The workflow uses this to look up the client dynamically:
+
+```
+Twilio To: +61485034338
+    ↓
+phone_number_map lookup
+    ↓
+{ client_id: "acme-dental", capability: "missed_call" }
+    ↓
+clients lookup
+    ↓
+{ name: "Acme Dental", booking_link: "...", owner_phone: "..." }
+```
+
+### Tables involved
+
+| Table | Role |
+|-------|------|
+| `phone_number_map` | Maps Twilio number → client_id + capability |
+| `clients` | Stores name, booking_link, owner_phone, timezone, business_hours |
+| `client_subscriptions` | Records which capabilities are enabled per client |
+
+### Adding a new client — see Section 7c below
 
 ---
 
-## 7. Pricing
+## 7c. Turning On Respond for an Existing Client
 
-| Plan | Target Volume | Price | Notes |
-|------|--------------|-------|-------|
-| Starter | Unlimited | $349/mo | v1 flat fee, simplest to sell |
-| Growth | ≤100 calls/mo | $299/mo | v2 tiered |
-| Scale | ≤300 calls/mo | $499/mo | v2 tiered |
-| Enterprise | 300+ | Custom | v2 |
+Use this checklist when a client already exists in Supabase and you want to enable CustomerReach Respond for them. No workflow changes required.
 
-**30-day performance-backed guarantee** — if the clinic doesn't capture more missed calls in 30 days, full refund.
+### Prerequisites
+- Client row exists in `clients` table (id, name, industry)
+- Twilio AU number provisioned for the client
+
+---
+
+### Step 1 — Populate client config in Supabase
+
+```sql
+UPDATE clients SET
+  owner_phone   = '+61XXXXXXXXXX',   -- clinic owner or front-desk mobile
+  timezone      = 'Australia/Sydney',
+  booking_link  = 'https://...',     -- Calendly or equivalent, or NULL for callback-only SMS
+  business_hours = '{"start": 8, "end": 18, "days": [1,2,3,4,5]}'::jsonb
+WHERE id = 'your-client-id';
+```
+
+If `booking_link` is NULL, the patient SMS will say *"Reply BOOK and we will call you back."*
+If set, the SMS will include the booking link automatically.
+
+---
+
+### Step 2 — Register the Twilio number
+
+```sql
+INSERT INTO phone_number_map (phone_number, client_id, capability)
+VALUES ('+61XXXXXXXXXX', 'your-client-id', 'missed_call');
+```
+
+The `phone_number` must exactly match the `To` field Twilio sends in the StatusCallback (E.164 format).
+
+---
+
+### Step 3 — Enable the capability
+
+```sql
+INSERT INTO client_subscriptions (client_id, capability)
+VALUES ('your-client-id', 'missed_call')
+ON CONFLICT (client_id, capability) DO NOTHING;
+```
+
+This makes the capability appear as Active in the client's dashboard Capabilities page.
+
+---
+
+### Step 4 — Configure Twilio StatusCallback
+
+In Twilio Console → Phone Numbers → Active Numbers → select the client's number:
+
+| Field | Value |
+|-------|-------|
+| Status Callback URL | `https://bizelevate1.app.n8n.cloud/webhook/missed-call` |
+| Method | HTTP POST |
+
+No workflow change is required — the existing workflow handles all clients.
+
+---
+
+### Step 5 — Verify
+
+Send a test webhook:
+
+```bash
+curl -X POST https://bizelevate1.app.n8n.cloud/webhook/missed-call \
+  --data "From=0412000001&To=+61XXXXXXXXXX&CallSid=CA-TEST-001&CallStatus=no-answer"
+```
+
+Confirm:
+- [ ] SMS received on the test mobile
+- [ ] SMS body uses the client's name (not another client's)
+- [ ] SMS body includes booking link if configured, or BOOK reply prompt if not
+- [ ] Row in `call_logs` with correct `client_id` and `capability = 'missed_call'`
+- [ ] Row visible in the client's dashboard
+
+---
+
+---
+
+## 7d. Enabling SMS Reply Capture + Booking Click Tracking for a Client
+
+These features are live and active. No code changes required per client — only configuration.
+
+### SMS Reply Capture — What to Configure
+
+The `sms-reply` webhook (`q4CYSzFYuYfp1eWa`) must be **activated in n8n** (toggle on).
+Once active, configure the **Twilio number's inbound SMS webhook**:
+
+| Field | Value |
+|-------|-------|
+| A message comes in — Webhook URL | `https://bizelevate1.app.n8n.cloud/webhook/sms-reply` |
+| Method | HTTP POST |
+
+In Twilio Console → Phone Numbers → Active Numbers → select the client's number → Messaging section.
+
+**Detected intents:**
+- `CALL` or `CALL ME` (case-insensitive) → sets `reply_intent=callback`, `callback_requested=true`
+- Anything else → sets `reply_intent=other`, `reply_received=true` only
+
+**Matching logic:** The SMS Reply Handler looks up the most recent `call_log` row where `patient_phone = SMS From` and `sms_sent = true`. This links the reply to the correct call record without any session state.
+
+---
+
+### Booking Link Click Tracking — What to Configure
+
+No Twilio configuration needed. The tracking redirect is automatically included in the patient SMS whenever `clients.booking_link` is set.
+
+**How it works:**
+1. `Prepare Context` generates a UUID (`callLogId`) for the call_log row
+2. SMS body contains: `https://gdzpgimyjgfzhnwyojmz.supabase.co/functions/v1/book/{callLogId}`
+3. Patient taps the link → Supabase Edge Function `book` runs → sets `booking_link_clicked=true` → 302 to booking URL
+4. The call_log row was INSERTed with that same UUID — the click is correlated back automatically
+
+**Custom domain (deferred):** When `book.bizelevate.app` is configured as a Supabase custom domain or proxy, update `TRACKING_BASE` in the `Prepare Context` node and re-push workflow `W9lssqC5Jvd3nIVo`.
+
+---
+
+## 7. Pricing & Product Tiers
+
+CustomerReach Respond is sold as a standalone capability or as part of a bundle. All prices AUD/month.
+
+| Tier | Capabilities Included | Price | Target Clinic |
+|------|-----------------------|-------|---------------|
+| **Starter** | CustomerReach Respond only | $199/mo | Price-sensitive, single-chair, try before commit |
+| **Core** | CustomerReach Respond + CustomerReach Answer + Dashboard | $499/mo | Standard 1–3 chair clinic |
+| **Growth** | Core + CustomerReach Remind + CustomerReach Review | $799/mo | Growth-focused, 2–3 chairs, active new patient acquisition |
+| **Practice** | Growth + CustomerReach Recall + Multi-location | $1,299/mo | Multi-dentist practice, 4+ chairs |
+
+**Setup fee:** $500–$750 one-time (covers Twilio provisioning, VAPI config, Supabase client setup, handoff).
+**Annual discount:** 20% off (equivalent to 2 months free). Reduces churn. Improves cashflow.
+**30-day guarantee:** If the clinic doesn't recover more missed calls in 30 days, full refund. De-risks the sale.
+
+### Capability → Tier Mapping
+
+| Capability | Starter | Core | Growth | Practice |
+|------------|---------|------|--------|----------|
+| CustomerReach Respond | ✓ | ✓ | ✓ | ✓ |
+| CustomerReach Answer (AI voice) | — | ✓ | ✓ | ✓ |
+| Management Dashboard | — | ✓ | ✓ | ✓ |
+| CustomerReach Remind | — | — | ✓ | ✓ |
+| CustomerReach Review | — | — | ✓ | ✓ |
+| CustomerReach Recall (dormant patients) | — | — | — | ✓ |
+| Multi-location support | — | — | — | ✓ |
 
 ---
 
@@ -325,48 +650,113 @@ Call `+61485004338` from your mobile. Let it ring out. Within 10 seconds you sho
 
 ## 10. Build Phases
 
-### Phase 1 — MVP (Demo-Ready)
-- [x] n8n workflow built and deployed — ID: `W9lssqC5Jvd3nIVo` (7 nodes)
-- [x] SMS template (1 default) — hardcoded in Send SMS node
-- [x] Supabase credentials injected via API (no placeholders remaining)
-- [x] Workflow ACTIVE in n8n + n8n folders organised (Capabilities/Missed Call Recovery)
-- [ ] Configure Twilio StatusCallback URL -> https://bizelevate1.app.n8n.cloud/webhook/missed-call
-
-- [ ] Demo tested: call rings out -> SMS received + Supabase row confirmed
-
-### Phase 2 — Client-Ready
-- [ ] Multi-client routing via Supabase phone number lookup
-- [ ] Client-specific SMS templates via config
-- [ ] Daily summary report (Slack or email)
-- [ ] Reply handling → route to Appointment Concierge
-
-### Phase 3 — Scale
-- [ ] AI triage: detect urgent keywords in reply → escalate
-- [ ] Analytics dashboard (Supabase + Metabase or Notion)
-- [ ] Automated client onboarding workflow
+Phases map directly to product tiers. Phase 1 completion = Starter + Core sellable. Phase 2 = Growth tier. Phase 3 = Practice tier.
 
 ---
 
-## 11. Integration with Appointment Concierge
+### Phase 1 — Sell-Ready (Starter + Core tiers)
+**Target:** First paying client. All items required before first demo with a prospect.
 
-The two capabilities are complementary and designed to be bundled:
+**Already done:**
+- [x] n8n CustomerReach Respond workflow built and deployed — ID: `W9lssqC5Jvd3nIVo` (10 nodes)
+- [x] Basic SMS send — dynamic template with client name + booking link (or CALL reply prompt)
+- [x] Supabase call_logs integration — credentials injected, workflow active
+- [x] CustomerReach Answer VAPI + n8n workflow (v2.1 active)
+- [x] Management Dashboard — call logs, urgency, action status (Phase 6.3)
+- [x] Multi-client routing via `phone_number_map` — no hardcoded client_id (Slice 3)
+- [x] Two-way SMS: CALL / CALL ME reply detection → `callback_requested=true` (SMS Reply Handler — ID: `q4CYSzFYuYfp1eWa`)
+- [x] Booking link click tracking — Supabase Edge Function `book`, pre-generated `callLogId` in INSERT
+
+**Remaining (see [checklists/v1-gap-fix-sprint.md](../checklists/v1-gap-fix-sprint.md) for day-by-day detail):**
+- [ ] Business hours detection — both Respond and Answer
+- [ ] After-hours SMS variant — Respond (different message when clinic is closed)
+- [ ] Callback task creation on CALL reply — Respond + dashboard (callback_tasks table exists, not yet written)
+- [ ] Daily missed call summary email to clinic owner — Respond
+- [ ] Recovery rate + conversion tracking — dashboard funnel widget
+- [ ] Answer: Alex offers 3 callback time slots — VAPI prompt
+- [ ] Answer: SMS includes specific callback time — n8n template
+- [ ] Answer: Emergency owner SMS alert — IF node + Twilio
+- [ ] Answer: FAQ capability (5–10 common questions) — VAPI prompt
+- [ ] Answer: After-hours tone variant — VAPI prompt
+- [ ] Configure Twilio StatusCallback URL on demo number
+- [ ] Configure Twilio inbound SMS webhook on demo number (→ sms-reply)
+- [ ] ~~Activate SMS Reply Handler workflow in n8n~~ — **DONE** (activated via API)
+- [ ] **Booking link URL looks like spam** — configure `book.bizelevate.app` custom domain pointing to the Supabase Edge Function, then update `TRACKING_BASE` constant in `Prepare Context` node and re-push workflow `W9lssqC5Jvd3nIVo`
+- [ ] End-to-end test: call rings out → SMS → CALL reply → callback_requested → dashboard
+
+---
+
+### Phase 2 — Growth Tier ($799/mo)
+**Target:** Client 2+ onboarding. Justify upsell from Core to Growth.
+
+**New capabilities:**
+- [ ] CustomerReach Remind workflow — SMS 24hrs before appointment, confirm/cancel reply handling
+- [ ] CustomerReach Review workflow — SMS 2hrs after visit, Google review link
+- [ ] CustomerReach Recall workflow (basic) — monthly SMS to patients not seen in 12+ months
+
+**Infrastructure:**
+- [x] ~~Multi-client routing — Supabase `phone_number_map` table~~ — **DONE (Slice 1–3)**
+- [x] ~~Client config in Supabase — business hours, owner mobile, booking link per client~~ — **DONE (Slice 1–2)**
+- [ ] Shared services sub-workflows — `send_sms`, `log_call`, `notify_owner`, `classify_urgency`
+- [ ] Router workflow + Workflow Registry table — capability enable/disable per client by tier
+- [ ] Upcoming appointments table in dashboard — staff enter upcoming slots for Reminder workflow
+
+**Dashboard:**
+- [ ] Callback Queue view — prioritised list, staff action, mark complete
+- [ ] Conversion funnel widget — Missed → SMS sent → Replied → Booked
+- [ ] Daily digest email to clinic owner — automated, shows yesterday's activity
+
+---
+
+### Phase 3 — Practice Tier ($1,299/mo)
+**Target:** Multi-dentist practices, 4+ chairs, multiple locations.
+
+**New capabilities:**
+- [ ] CustomerReach Recall v2 — ACMA-compliant opt-out handling, personalised messaging, send scheduling
+- [ ] Multi-location support — multiple `client_id` slugs under one practice owner login
+- [ ] WhatsApp support — Twilio WhatsApp API as SMS alternative (same workflows, channel swap)
+
+**Architecture:**
+- [ ] MCP Server Trigger — expose n8n sub-workflows as AI tools for future voice agent v3
+- [ ] Microservice migration — all capabilities call shared services, Router + Registry fully live
+- [ ] Automated client onboarding — Supabase row + Twilio provisioning + SMS welcome, triggered by signup
+
+**AI Orchestration (voice agent v3):**
+- [ ] Real-time tool calling during VAPI calls — `check_availability`, `book_appointment`
+- [ ] Claude as orchestration layer — complex multi-step intents handled by AI, not IF nodes
+
+---
+
+## 11. Integration with CustomerReach Answer
+
+The two capabilities are complementary and sold together as the **Core tier ($499/mo)**:
 
 | Scenario | Capability |
 |----------|------------|
-| Patient calls during hours | Appointment Concierge (VAPI handles) |
-| Patient calls after hours or missed | Missed Call Recovery (Twilio SMS) |
-| Patient replies to SMS | Route to Appointment Concierge intake form or callback |
+| Patient calls during business hours, staff answers | Normal call — no automation |
+| Patient calls during business hours, no answer | CustomerReach Respond — SMS within 10 seconds |
+| Patient calls after hours | CustomerReach Answer — Alex answers, takes request |
+| Patient replies BOOK to Respond SMS | Callback task created, staff actioned via dashboard |
+| Answer classifies urgency = emergency | Owner SMS alert fires immediately |
 
-**Bundle price (v2):** $599/mo for both capabilities.
+**Core bundle:** $499/mo. The pitch: *"No matter when your patients call — answered, missed, or after hours — they always get a response."*
 
 ---
 
-## 12. Next Actions
+## 12. Current Status & Next Actions
 
-| Priority | Action | Owner |
-|----------|--------|-------|
-| 1 | Build n8n workflow (Phase 1) | Claude Code |
-| 2 | Configure Twilio StatusCallback on demo number | You |
-| 3 | Test end-to-end with real missed call | You |
-| 4 | Create lead list (Google Maps scrape — dental clinics AU) | You |
-| 5 | Send first cold email batch (300/week target) | You |
+**Current Phase:** Phase 1 — completing gap fixes before first client.
+**Sprint doc:** [checklists/v1-gap-fix-sprint.md](../checklists/v1-gap-fix-sprint.md)
+
+| Priority | Action | Phase | Owner |
+|----------|--------|-------|-------|
+| 1 | Complete all Phase 1 remaining items (see sprint doc) | 1 | Claude Code + You |
+| 2 | Configure Twilio StatusCallback on demo number | 1 | You |
+| 3 | End-to-end demo test: Respond + Answer + Dashboard | 1 | You |
+| 4 | Close first paying client (Starter or Core tier) | 1 | You |
+| 5 | Build CustomerReach Remind workflow | 2 | Claude Code |
+| 6 | Build CustomerReach Review workflow | 2 | Claude Code |
+| 7 | Build shared services sub-workflows + Router + Registry | 2 | Claude Code |
+| 8 | Multi-client routing — onboard client 2 in under 30 min | 2 | Claude Code + You |
+| 9 | Build CustomerReach Recall + ACMA compliance | 3 | Claude Code |
+| 10 | MCP Server Trigger + microservice migration | 3 | Claude Code |

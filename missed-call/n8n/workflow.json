@@ -11,10 +11,7 @@
       "name": "Missed Call Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [
-        0,
-        304
-      ],
+      "position": [0, 304],
       "webhookId": "bmcr-missed-call"
     },
     {
@@ -25,10 +22,7 @@
       "name": "Normalize Twilio Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        224,
-        304
-      ]
+      "position": [224, 304]
     },
     {
       "parameters": {
@@ -43,46 +37,31 @@
               "id": "cond-completed",
               "leftValue": "={{ $json.callStatus }}",
               "rightValue": "completed",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
+              "operator": { "type": "string", "operation": "equals" }
             },
             {
               "id": "cond-no-answer",
               "leftValue": "={{ $json.callStatus }}",
               "rightValue": "no-answer",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
+              "operator": { "type": "string", "operation": "equals" }
             },
             {
               "id": "cond-busy",
               "leftValue": "={{ $json.callStatus }}",
               "rightValue": "busy",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
+              "operator": { "type": "string", "operation": "equals" }
             },
             {
               "id": "cond-canceled",
               "leftValue": "={{ $json.callStatus }}",
               "rightValue": "canceled",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
+              "operator": { "type": "string", "operation": "equals" }
             },
             {
               "id": "cond-failed",
               "leftValue": "={{ $json.callStatus }}",
               "rightValue": "failed",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
+              "operator": { "type": "string", "operation": "equals" }
             }
           ],
           "combinator": "or"
@@ -93,10 +72,57 @@
       "name": "Filter: Missed Calls Only",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        448,
-        304
-      ]
+      "position": [448, 304]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=<SUPABASE_URL>/rest/v1/phone_number_map?select=client_id,capability&phone_number=eq.{{ encodeURIComponent($('Normalize Twilio Payload').item.json.callTo) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",         "value": "<SUPABASE_SERVICE_KEY>" },
+            { "name": "Authorization",  "value": "Bearer <SUPABASE_SERVICE_KEY>" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "lookup-client",
+      "name": "Lookup Client",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [672, 304],
+      "onError": "stopWorkflow"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=<SUPABASE_URL>/rest/v1/clients?select=id,name,owner_phone,timezone,booking_link,business_hours&id=eq.{{ encodeURIComponent((Array.isArray($json) ? $json[0].client_id : $json.client_id) || '') }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey",         "value": "<SUPABASE_SERVICE_KEY>" },
+            { "name": "Authorization",  "value": "Bearer <SUPABASE_SERVICE_KEY>" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-client-config",
+      "name": "Fetch Client Config",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [896, 304],
+      "onError": "stopWorkflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge call data + client config into one context object.\n// All downstream nodes read from $json (or $('Prepare Context').item.json after empty-body writes).\n\nconst call = $('Normalize Twilio Payload').item.json;\n\n// Supabase REST returns arrays — handle both array and direct-object shapes\nconst lookupRaw = $('Lookup Client').item.json;\nconst lookup = Array.isArray(lookupRaw) ? lookupRaw[0] : lookupRaw;\n\nconst configRaw = $input.item.json;\nconst config = Array.isArray(configRaw) ? configRaw[0] : configRaw;\n\nif (!lookup || !lookup.client_id) {\n  throw new Error('No phone_number_map entry for callTo: ' + call.callTo);\n}\nif (!config || !config.id) {\n  throw new Error('No client config found for client_id: ' + lookup.client_id);\n}\n\n// Generate a stable UUID for this call_log row — used in the tracking URL so\n// we can correlate a booking link click back to the exact call record.\nconst callLogId = require('crypto').randomUUID();\n\n// Tracking base — swap to https://book.bizelevate.app once custom domain is configured\nconst TRACKING_BASE = 'https://gdzpgimyjgfzhnwyojmz.supabase.co/functions/v1/book';\n\n// Build SMS body — use tracking redirect (not raw link) so clicks are recorded\nconst hasBookingLink = config.booking_link && config.booking_link.trim().length > 0;\nconst trackingUrl = hasBookingLink ? `${TRACKING_BASE}/${callLogId}` : null;\nconst smsBody = hasBookingLink\n  ? `Hi, we missed your call at ${config.name}. Book here: ${trackingUrl}`\n  : `Hi, we missed your call at ${config.name}. Reply CALL and we will call you back.`;\n\nreturn [{\n  json: {\n    callFrom:    call.callFrom,\n    callTo:      call.callTo,\n    callSid:     call.callSid,\n    callStatus:  call.callStatus,\n    clientId:    lookup.client_id,\n    capability:  lookup.capability,\n    clientName:  config.name,\n    ownerPhone:  config.owner_phone,\n    bookingLink: config.booking_link || null,\n    trackingUrl,\n    callLogId,\n    smsBody,\n    twilioFrom:  call.callTo   // send FROM the number that was called (correct Twilio number per client)\n  }\n}];"
+      },
+      "id": "prepare-context",
+      "name": "Prepare Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 304]
     },
     {
       "parameters": {
@@ -111,10 +137,7 @@
               "id": "check-phone-valid",
               "leftValue": "={{ $json.callFrom }}",
               "rightValue": "^(\\+?614|04)\\d{8}$",
-              "operator": {
-                "type": "string",
-                "operation": "regex"
-              }
+              "operator": { "type": "string", "operation": "regex" }
             }
           ],
           "combinator": "and"
@@ -125,10 +148,7 @@
       "name": "Phone Valid?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        672,
-        304
-      ]
+      "position": [1344, 304]
     },
     {
       "parameters": {
@@ -137,51 +157,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "<SUPABASE_SERVICE_KEY>"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer <SUPABASE_SERVICE_KEY>"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=minimal"
-            }
+            { "name": "apikey",         "value": "<SUPABASE_SERVICE_KEY>" },
+            { "name": "Authorization",  "value": "Bearer <SUPABASE_SERVICE_KEY>" },
+            { "name": "Prefer",         "value": "return=minimal" }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            {
-              "name": "capability",
-              "value": "missed_call"
-            },
-            {
-              "name": "client_id",
-              "value": "smile-dental"
-            },
-            {
-              "name": "call_id",
-              "value": "={{ $json.callSid }}"
-            },
-            {
-              "name": "patient_phone",
-              "value": "={{ $json.callFrom }}"
-            },
-            {
-              "name": "call_status",
-              "value": "missed"
-            },
-            {
-              "name": "sms_sent",
-              "value": "true"
-            },
-            {
-              "name": "notes",
-              "value": "={{ 'CallStatus: ' + $json.callStatus + ' | To: ' + $json.callTo }}"
-            }
+            { "name": "id",             "value": "={{ $('Prepare Context').item.json.callLogId }}" },
+            { "name": "capability",     "value": "={{ $json.capability }}" },
+            { "name": "client_id",      "value": "={{ $json.clientId }}" },
+            { "name": "call_id",        "value": "={{ $json.callSid }}" },
+            { "name": "patient_phone",  "value": "={{ $json.callFrom }}" },
+            { "name": "call_status",    "value": "missed" },
+            { "name": "sms_sent",       "value": "true" },
+            { "name": "notes",          "value": "={{ 'CallStatus: ' + $json.callStatus + ' | To: ' + $json.callTo }}" }
           ]
         },
         "options": {}
@@ -190,10 +181,7 @@
       "name": "Write to Supabase",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        880,
-        192
-      ],
+      "position": [1568, 192],
       "onError": "continueRegularOutput"
     },
     {
@@ -206,18 +194,9 @@
         "contentType": "form-urlencoded",
         "bodyParameters": {
           "parameters": [
-            {
-              "name": "From",
-              "value": "+61485004338"
-            },
-            {
-              "name": "To",
-              "value": "={{ $('Phone Valid?').item.json.callFrom }}"
-            },
-            {
-              "name": "Body",
-              "value": "=Hi, we missed your call at Smile Dental Campsie. We would love to help - call us back on +61485004338 or reply to book an appointment."
-            }
+            { "name": "From", "value": "={{ $('Prepare Context').item.json.twilioFrom }}" },
+            { "name": "To",   "value": "={{ $('Prepare Context').item.json.callFrom }}" },
+            { "name": "Body", "value": "={{ $('Prepare Context').item.json.smsBody }}" }
           ]
         },
         "options": {}
@@ -226,10 +205,7 @@
       "name": "Send SMS",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        1104,
-        192
-      ],
+      "position": [1792, 192],
       "credentials": {
         "httpBasicAuth": {
           "id": "Vpy229UTG1RYrPP0",
@@ -245,51 +221,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "apikey",
-              "value": "<SUPABASE_SERVICE_KEY>"
-            },
-            {
-              "name": "Authorization",
-              "value": "Bearer <SUPABASE_SERVICE_KEY>"
-            },
-            {
-              "name": "Prefer",
-              "value": "return=minimal"
-            }
+            { "name": "apikey",         "value": "<SUPABASE_SERVICE_KEY>" },
+            { "name": "Authorization",  "value": "Bearer <SUPABASE_SERVICE_KEY>" },
+            { "name": "Prefer",         "value": "return=minimal" }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            {
-              "name": "capability",
-              "value": "missed_call"
-            },
-            {
-              "name": "client_id",
-              "value": "smile-dental"
-            },
-            {
-              "name": "call_id",
-              "value": "={{ $json.callSid }}"
-            },
-            {
-              "name": "patient_phone",
-              "value": "={{ $json.callFrom }}"
-            },
-            {
-              "name": "call_status",
-              "value": "missed"
-            },
-            {
-              "name": "sms_sent",
-              "value": "false"
-            },
-            {
-              "name": "notes",
-              "value": "={{ 'Invalid AU phone - no SMS sent. CallStatus: ' + $json.callStatus + ' | From: ' + $json.callFrom }}"
-            }
+            { "name": "id",             "value": "={{ $('Prepare Context').item.json.callLogId }}" },
+            { "name": "capability",     "value": "={{ $json.capability }}" },
+            { "name": "client_id",      "value": "={{ $json.clientId }}" },
+            { "name": "call_id",        "value": "={{ $json.callSid }}" },
+            { "name": "patient_phone",  "value": "={{ $json.callFrom }}" },
+            { "name": "call_status",    "value": "missed" },
+            { "name": "sms_sent",       "value": "false" },
+            { "name": "notes",          "value": "={{ 'Invalid AU phone - no SMS sent. CallStatus: ' + $json.callStatus + ' | From: ' + $json.callFrom }}" }
           ]
         },
         "options": {}
@@ -298,76 +245,40 @@
       "name": "Write to Supabase — No Phone",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        880,
-        448
-      ],
+      "position": [1568, 448],
       "onError": "continueRegularOutput"
     }
   ],
   "connections": {
     "Missed Call Webhook": {
-      "main": [
-        [
-          {
-            "node": "Normalize Twilio Payload",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Normalize Twilio Payload", "type": "main", "index": 0 }]]
     },
     "Normalize Twilio Payload": {
-      "main": [
-        [
-          {
-            "node": "Filter: Missed Calls Only",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Filter: Missed Calls Only", "type": "main", "index": 0 }]]
     },
     "Filter: Missed Calls Only": {
       "main": [
-        [
-          {
-            "node": "Phone Valid?",
-            "type": "main",
-            "index": 0
-          }
-        ],
+        [{ "node": "Lookup Client", "type": "main", "index": 0 }],
         []
       ]
     },
+    "Lookup Client": {
+      "main": [[{ "node": "Fetch Client Config", "type": "main", "index": 0 }]]
+    },
+    "Fetch Client Config": {
+      "main": [[{ "node": "Prepare Context", "type": "main", "index": 0 }]]
+    },
+    "Prepare Context": {
+      "main": [[{ "node": "Phone Valid?", "type": "main", "index": 0 }]]
+    },
     "Phone Valid?": {
       "main": [
-        [
-          {
-            "node": "Write to Supabase",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Write to Supabase — No Phone",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Write to Supabase", "type": "main", "index": 0 }],
+        [{ "node": "Write to Supabase — No Phone", "type": "main", "index": 0 }]
       ]
     },
     "Write to Supabase": {
-      "main": [
-        [
-          {
-            "node": "Send SMS",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Send SMS", "type": "main", "index": 0 }]]
     }
   },
   "settings": {

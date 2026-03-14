@@ -4,6 +4,19 @@ Minimal documentation. Only what's needed to reuse or sell.
 
 ---
 
+## Environments & Deployments
+
+| Doc | Purpose |
+|-----|---------|
+| [`supabase/ENVIRONMENTS.md`](../supabase/ENVIRONMENTS.md) | Environment registry (project URLs), migration promotion runbook, schema change rules |
+| [`checklists/pre-deploy.md`](../checklists/pre-deploy.md) | Gate checklist before promoting any change dev → preprod → prod |
+| [`checklists/schema-change.md`](../checklists/schema-change.md) | Step-by-step for every DB table/column change |
+| [`checklists/first-customer.md`](../checklists/first-customer.md) | One-time setup checklist for full environment separation when first customer lands |
+
+**Rule of thumb:** dev → preprod → prod. No direct production SQL or workflow edits once a real customer is live.
+
+---
+
 ## Local Secrets Quickstart
 
 ### Committed (safe to push)

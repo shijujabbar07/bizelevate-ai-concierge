@@ -438,5 +438,41 @@ If this repo was ever pushed with real values, **rotate all affected credentials
 
 ---
 
-**Last Updated:** 15 Feb 2026 (v4 – n8n MCP Integration)
+---
+
+## Notion Sync (Non-Negotiable)
+
+Every `PLAYBOOK.md` file in this project has a corresponding page in the **BizElevate Document Hub** Notion database.
+
+**Hard rule:** Whenever Claude creates or updates any `PLAYBOOK.md` file, it **must** also sync the full content to Notion in the same operation. The user reads playbooks from Notion — never skip this step.
+
+### Notion Config
+- **MCP server:** `notion` (configured in `.mcp.json` — uses `@notionhq/notion-mcp-server`)
+- **Integration:** BizElevate Claude Code 2 (token: `ntn_` format, stored in `.mcp.json`)
+- **Database ID:** `31f2b7aa-f2e3-80c8-a158-c9ff2a5341e3` (BizElevate Document Hub)
+
+### Known Page IDs
+| Playbook | File | Notion Page ID |
+|----------|------|----------------|
+| CustomerReach Respond | `missed-call/PLAYBOOK.md` | `31f2b7aa-f2e3-810b-bfa1-c6b9693c42ee` |
+| CustomerReach Answer | `appointment-concierge/PLAYBOOK.md` | `31f2b7aa-f2e3-8143-9fec-cffad5f36a1c` |
+
+### Sync Method (Full Replace)
+The Notion API cannot replace all page content in one call. Use this pattern:
+
+1. **Get existing blocks:** `mcp__notion__API-get-block-children` with the page ID
+2. **Delete all blocks:** Use `curl` with DELETE to `https://api.notion.com/v1/blocks/{block_id}` for each block (faster than individual MCP calls)
+3. **Push full content:** Use `node -e` with `https.request` to PATCH `/v1/blocks/{pageId}/children` with up to 100 blocks per call (batch if needed)
+
+Token for curl/node calls: read from `.mcp.json` `OPENAPI_MCP_HEADERS` env value.
+
+### Sync Rules
+1. **Create new playbook** → write the `.md` file, then create a new Notion page in the Document Hub database and push full content
+2. **Update existing playbook** → update the `.md` file, then delete all existing Notion blocks and push the full updated content
+3. **Never skip the Notion sync** — the user reads playbooks from Notion, not from the repo
+4. **Full content only** — never push a summary. The Notion page must mirror the full `.md` file.
+
+---
+
+**Last Updated:** 11 Mar 2026 (v6 – Notion full-content sync via BizElevate Claude Code 2)
 **Workspace Owner:** BizElevate
