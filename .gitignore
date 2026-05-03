@@ -53,3 +53,12 @@ secrets.local.json
 
 # Windows reserved device file
 nul
+
+# Backups — ignore everything by default, but keep n8n workflow JSONs (audit trail).
+# The un-ignore chain walks each parent directory back up so git stays inside the
+# n8n folders. Order matters; do not reshuffle without testing with git check-ignore.
+backups/**
+!backups/
+!backups/*/
+!backups/*/n8n/
+!backups/*/n8n/*.json
