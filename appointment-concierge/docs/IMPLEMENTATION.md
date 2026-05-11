@@ -95,10 +95,10 @@ Before starting, verify you have:
 ## Phase 4: Configure VAPI Webhook
 **Time: 10 minutes**
 
-**Important:** Keep your existing Alex system prompt - only configure webhook settings.
+**Important:** Keep your existing Casey system prompt - only configure webhook settings.
 
 - [ ] 4.1 Log in to VAPI Dashboard
-- [ ] 4.2 Open your existing assistant (Alex dental assistant)
+- [ ] 4.2 Open your existing assistant (Casey dental assistant)
 - [ ] 4.3 **Do NOT change:** System prompt, model settings, voice settings, first/end messages
 - [ ] 4.4 Set Server URL: `https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment`
 - [ ] 4.5 Set Server URL Secret: `<VAPI_WEBHOOK_SECRET>`
@@ -108,7 +108,7 @@ Before starting, verify you have:
 - [ ] 4.9 Verify Recording & Transcription are enabled
 - [ ] 4.10 Save assistant
 
-**Success Criteria:** VAPI assistant saved with webhook URL, existing Alex prompt unchanged
+**Success Criteria:** VAPI assistant saved with webhook URL, existing Casey prompt unchanged
 
 ---
 

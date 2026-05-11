@@ -13,7 +13,7 @@ CustomerReach Answer is an inbound AI voice agent that answers calls, collects a
 
 When a patient calls and the front desk is busy, on hold, or unavailable, the AI agent steps in:
 
-1. Greets the patient professionally ("Hi, you've reached Smile Dental…")
+1. Greets the patient professionally ("Hi, you've reached Riverside Dental…")
 2. Collects their name, phone number, preferred appointment time, and reason for visit
 3. Classifies the request as routine, urgent, or emergency
 4. Sends the patient an SMS confirmation within seconds of hanging up

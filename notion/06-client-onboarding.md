@@ -94,7 +94,7 @@ From this point forward:
 Run this for every new client, including client 1.
 
 > Before starting: confirm the client's tier (Starter = Respond only, Core = Respond + Answer + Dashboard).
-> See pricing in [missed-call/PLAYBOOK.md](../missed-call/PLAYBOOK.md) → Section 7.
+> See pricing in [missed-call/PLAYBOOK.md](https://www.notion.so/31f2b7aaf2e3810bbfa1c6b9693c42ee) → Section 7.
 
 ### Step 1 — Provision a Twilio number
 
@@ -191,7 +191,7 @@ ON CONFLICT (client_id, capability) DO NOTHING;
   - No-answer forward: `*62*04XXXXXXXX#` (from clinic's landline)
   - Cancel any time: `##62#`
 
-> Full phone setup options: see [docs/PHONE-ONBOARDING.md](../docs/PHONE-ONBOARDING.md)
+> Full phone setup options: see [docs/PHONE-ONBOARDING.md](https://www.notion.so/3212b7aaf2e381089e15de2ef4033b2e)
 
 ### Step 6 — Provision dashboard access for clinic staff
 

@@ -7,7 +7,7 @@ Reference details (for troubleshooting) are in **[checklists/CLIENT-ONBOARDING.m
 **Test accounts:**
 | Account | Client |
 |---------|--------|
-| `shijugamma@gmail.com` | `smile-dental` |
+| `shijugamma@gmail.com` | `riverside-dental` |
 | `shijubeta@gmail.com` | `clyde-north-dental` |
 
 **Key config values:**

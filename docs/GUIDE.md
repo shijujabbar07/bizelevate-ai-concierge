@@ -45,7 +45,7 @@ If anything is red: open n8n → click the failed execution → inspect the erro
 ## Dashboard
 
 - **Live URL:** `https://dashboard.bizelevate.app`
-- **Test account (smile-dental):** `shijugamma@gmail.com`
+- **Test account (riverside-dental):** `shijugamma@gmail.com`
 - **Test account (clyde-north-dental):** `shijubeta@gmail.com`
 
 ---
@@ -119,7 +119,7 @@ Phone number rings
        │
        ▼
 n8n looks up phone_number_map
-  → finds client_id (e.g. 'smile-dental')
+  → finds client_id (e.g. 'riverside-dental')
   → reads clients + client_subscriptions
   → determines enabled features, SMS templates, booking URL
        │

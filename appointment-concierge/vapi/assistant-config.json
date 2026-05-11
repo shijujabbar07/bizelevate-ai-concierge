@@ -1,7 +1,7 @@
 {
-  "_note": "REFERENCE CONFIG ONLY. For the active system prompt, use vapi/prompts/alex-v2-intake-only.md. Replace the systemPrompt field below with the content of that file. The serverUrl, serverUrlSecret, tools, and analysisPlan sections are current and correct.",
+  "_note": "REFERENCE CONFIG ONLY. For the active system prompt, use vapi/prompts/casey-v2-intake-only.md. Replace the systemPrompt field below with the content of that file. The serverUrl, serverUrlSecret, tools, and analysisPlan sections are current and correct.",
   "_promptVersion": "v2-intake-only",
-  "_promptFile": "vapi/prompts/alex-v2-intake-only.md",
+  "_promptFile": "vapi/prompts/casey-v2-intake-only.md",
   "name": "BizElevate Appointment Concierge",
   "model": {
     "provider": "openai",

@@ -193,6 +193,14 @@ Introduce native builds only when value is proven.
   - Shared tool logic
   - Revenue-impacting execution paths
 
+### No Shortcuts on Minor Schema or Logic Fixes
+
+**Never propose a workaround when the correct fix is small.**
+If a schema constraint, nullable column, or logic gap can be fixed cleanly
+with a migration or a minor code change, do it properly — don't patch around it.
+Workarounds compound. A two-line migration now beats a growing pile of
+defensive code later.
+
 ---
 
 ## Technology Stack
@@ -394,6 +402,85 @@ If this repo was ever pushed with real values, **rotate all affected credentials
 
 ---
 
+## Behavioral Rules
+
+### VAPI Prompt Updates (Non-Negotiable)
+
+When any VAPI system prompt, first message, or end-call message needs updating:
+
+1. **Always rewrite the entire file** with all changes applied — never ask the user to manually edit individual sections or find-and-replace specific words.
+2. **Always present the full updated prompt** and instruct the user to do a full replace in VAPI (select all → paste). Partial edits in the VAPI UI are error-prone and slow.
+3. **Do not introduce VAPI custom variables** (`{{variable_name}}`) unless the user has confirmed that VAPI's variable injection is working in their instance. The only safe VAPI variable is `{{customer.number}}` (a real VAPI system variable). All other config values (agent name, clinic name, hours, etc.) must be hardcoded in the prompt until Phase 7 dynamic config is live.
+4. **Always update the repo prompt file first**, commit it, then present the full text for VAPI copy-paste. The repo is the source of truth — VAPI is the deployment target.
+5. **First Message and End Call Message** must be updated in the same operation as the system prompt — never leave them out of sync.
+
+---
+
+### MCP-First Automation (Non-Negotiable)
+
+The user is a solo founder. Founder time is the scarcest resource and is most productive
+when spent on sales, prospect conversations, and product decisions — not on UI clicks
+or repetitive system administration. Every minute of manual operations work is a minute
+not spent on revenue.
+
+**Default behavior:** When a task can be performed via an MCP tool (n8n-mcp, Supabase
+MCP, Notion API, GitHub, Todoist, Linear, Slack, etc.), Claude **must** propose the
+MCP-driven approach first. Manual UI work is the exception, not the default.
+
+**Manual work requires explicit justification.** If Claude is about to recommend a
+manual UI step, it must state *why* MCP is not viable for this specific task — e.g.
+"VAPI Dashboard config has no equivalent API surface for this field," or "Twilio number
+provisioning requires manual purchase confirmation per regulatory rules." Phrases like
+"it's faster to do this manually" are not sufficient justification — automation almost
+always pays back across re-runs, audit trails, and future client onboarding.
+
+**Audit trails are mandatory.** MCP-driven changes should produce a git commit (or
+equivalent versioned record) so the change is reversible and traceable. Manual UI
+changes leave no trail and break the rollback story.
+
+**Pattern examples Claude should follow:**
+
+| Task | MCP path (preferred) | Manual fallback (only with justification) |
+|------|---------------------|-------------------------------------------|
+| n8n workflow updates | `n8n-mcp` tools (`n8n_update_full_workflow`, etc.) + git commit | n8n UI editor |
+| Supabase schema changes | `supabase/migrations/*.sql` files committed to repo | Dashboard SQL Editor |
+| Supabase data inspection | Read-only queries via MCP / connection string + saved query files | Dashboard table editor |
+| Notion playbook updates | `node /tmp/notion-sync.js` after editing markdown | Manual page edits |
+| Todoist task creation | Todoist MCP | Todoist app/web UI |
+| GitHub commits/PRs | GitHub MCP or `gh` CLI | Web UI |
+
+**When proposing a workflow with manual steps, Claude must:**
+1. List which steps are MCP-driven vs manual.
+2. Explain why each manual step exists (what API/tool is missing).
+3. Flag any manual step that's manual *only* because no one's built the MCP path yet —
+   this is technical debt to track, not an acceptable steady state.
+
+This rule applies across all sessions. It is not specific to any one task.
+
+### Plan Mode Default
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately — don't keep pushing
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
+
+### Verification Before Done
+- Never mark a task complete without proving it works
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
+- Diff behaviour between original and changed state when relevant
+
+### Autonomous Bug Fixing
+- When given a bug report: just fix it — no hand-holding required
+- Point at logs, errors, and failing tests, then resolve them
+- Zero context switching required from the user
+
+### Self-Improvement Loop
+- After ANY correction from the user: update `tasks/lessons.md` with the pattern
+- Write rules that prevent the same mistake recurring
+- Review `tasks/lessons.md` at the start of each session for relevant context
+
+---
+
 ## Execution Best Practices
 
 ### Before Starting Any Task
@@ -423,6 +510,12 @@ If this repo was ever pushed with real values, **rotate all affected credentials
 - Call out poor ROI or fragility
 - Action over theory
 
+**Time Allocation (founder-grade)**
+- Founder time = sales hours
+- Manual UI work is the failure mode, not the default
+- See **Behavioral Rules → MCP-First Automation** for the full rule
+- When in doubt: automate via MCP, generate a git commit, free founder time for selling
+
 **Delivery Bias**
 - Demo-ready
 - Modular
@@ -438,6 +531,31 @@ If this repo was ever pushed with real values, **rotate all affected credentials
 
 ---
 
+## Tool Roles (Non-Negotiable)
+
+Two tools. Two jobs. Never swap them.
+
+| Tool | Role | What lives there |
+|------|------|-----------------|
+| **Todoist** | Execution layer | Tasks, sprints, checklists, daily actions, follow-ups |
+| **Notion** | Knowledge layer | Playbooks, docs, architecture decisions, SOPs |
+
+### Hard Rules
+- Sprint tasks and action items live in **Todoist only** — never in Notion
+- Notion is never used as a task manager — no sprint boards, no to-do lists
+- When a task relates to a playbook, paste the Notion page URL in the Todoist task description
+- When Claude creates a task or action item, it goes to Todoist — not Notion
+- When Claude creates or updates a playbook, it goes to Notion — not Todoist
+
+### Todoist Project Structure
+| Project | Colour | Purpose |
+|---------|--------|---------|
+| `BizElevate — Sprint Phase 1` | Red | Active sprint work, organised by day |
+| `BizElevate — GTM Actions` | Orange | Go-to-market tasks |
+| `BizElevate — Launch Prerequisites` | Blue | Pre-launch checklist items |
+
+Each sprint project uses a pinned **🔥 Focus Right Now** section at the top for the 1–3 highest-priority tasks, followed by day-labelled sections (Day 1, Day 2, etc.).
+
 ---
 
 ## Notion Sync (Non-Negotiable)
@@ -452,27 +570,49 @@ Every `PLAYBOOK.md` file in this project has a corresponding page in the **BizEl
 - **Database ID:** `31f2b7aa-f2e3-80c8-a158-c9ff2a5341e3` (BizElevate Document Hub)
 
 ### Known Page IDs
-| Playbook | File | Notion Page ID |
+| Document | File | Notion Page ID |
 |----------|------|----------------|
-| CustomerReach Respond | `missed-call/PLAYBOOK.md` | `31f2b7aa-f2e3-810b-bfa1-c6b9693c42ee` |
-| CustomerReach Answer | `appointment-concierge/PLAYBOOK.md` | `31f2b7aa-f2e3-8143-9fec-cffad5f36a1c` |
+| Operating Truth | `notion/OPERATING-TRUTH.md` | `3272b7aa-f2e3-8128-8dc1-fcbafcf1cee0` |
+| CustomerReach Respond | `notion/playbook-respond.md` | `31f2b7aa-f2e3-810b-bfa1-c6b9693c42ee` |
+| CustomerReach Answer | `notion/playbook-answer.md` | `31f2b7aa-f2e3-8143-9fec-cffad5f36a1c` |
+| CustomerReach Remind | `notion/playbook-remind.md` | `3252b7aa-f2e3-8159-8929-dffe4ead276f` |
+| Testing — Strategy | `testing/STRATEGY.md` | `3292b7aa-f2e3-81c3-9643-fffe692b024e` |
+| Testing — Test Inventory | `testing/TEST-INVENTORY.md` | `3292b7aa-f2e3-8137-a913-f4c2c9bda26a` |
+| Testing — Manual QA Checklist | `testing/MANUAL-QA-CHECKLIST.md` | `3292b7aa-f2e3-8111-a78c-c6d91db34c25` |
+| Testing — Critical Path Tests | `testing/CRITICAL-PATH-TESTS.md` | `3292b7aa-f2e3-8158-9259-d6258a275cce` |
+| Testing — Bug Report Template | `testing/BUG-REPORT.md` | `3292b7aa-f2e3-81fd-8c28-c7ce1890ff0b` |
+| Testing — Release Readiness | `testing/RELEASE-READINESS.md` | `3292b7aa-f2e3-8148-83a8-ff46af6fdf60` |
+| OpenClaw — VPS Setup Guide | `notion/openclaw-setup.md` | `3252b7aa-f2e3-8116-a313-f022a437d1fe` |
 
 ### Sync Method (Full Replace)
 The Notion API cannot replace all page content in one call. Use this pattern:
 
-1. **Get existing blocks:** `mcp__notion__API-get-block-children` with the page ID
-2. **Delete all blocks:** Use `curl` with DELETE to `https://api.notion.com/v1/blocks/{block_id}` for each block (faster than individual MCP calls)
-3. **Push full content:** Use `node -e` with `https.request` to PATCH `/v1/blocks/{pageId}/children` with up to 100 blocks per call (batch if needed)
+1. **Get existing blocks:** GET `/v1/blocks/{pageId}/children?page_size=100`
+2. **Delete all blocks:** DELETE `/v1/blocks/{blockId}` for each (parallel calls are fine)
+3. **Push full content:** PATCH `/v1/blocks/{pageId}/children` — up to 100 blocks per call, batch if needed
 
-Token for curl/node calls: read from `.mcp.json` `OPENAPI_MCP_HEADERS` env value.
+Token for node calls: read from `.mcp.local.json` under `notion` → `OPENAPI_MCP_HEADERS` (`ntn_` token).
+
+**Reusable sync script:** `/tmp/notion-sync.js` — run `node /tmp/notion-sync.js` to re-sync all known pages. Add new pages to the `pages` array at the bottom.
+
+### Critical: Inline Link and Table Rendering
+**Never push markdown as raw text.** Two rules that must always be applied:
+
+1. **Inline links** — `[text](url)` must become a Notion `rich_text` object with a `link` property:
+   `{ "type": "text", "text": { "content": "link label", "link": { "url": "https://..." } } }`
+   Inline backtick code must use `annotations: { code: true }`.
+
+2. **Table rows** — convert to `bulleted_list_item` blocks. Join cells with ` → `. Parse any `[text](url)` in cells into linked rich_text. Skip separator rows (`|---|`) entirely. Never emit table rows as paragraphs or code blocks.
+
+The `parseRichText()` function in `/tmp/notion-sync.js` is the correct reference implementation for all future syncs.
 
 ### Sync Rules
-1. **Create new playbook** → write the `.md` file, then create a new Notion page in the Document Hub database and push full content
-2. **Update existing playbook** → update the `.md` file, then delete all existing Notion blocks and push the full updated content
+1. **Create new playbook** → write the `.md` file, create a new Notion page in the Document Hub database, push full content using the sync method above
+2. **Update existing playbook** → update the `.md` file, delete all existing Notion blocks, push the full updated content
 3. **Never skip the Notion sync** — the user reads playbooks from Notion, not from the repo
 4. **Full content only** — never push a summary. The Notion page must mirror the full `.md` file.
 
 ---
 
-**Last Updated:** 11 Mar 2026 (v6 – Notion full-content sync via BizElevate Claude Code 2)
+**Last Updated:** 26 Apr 2026 (v7 – Tool Roles section: Todoist for tasks, Notion for docs)
 **Workspace Owner:** BizElevate

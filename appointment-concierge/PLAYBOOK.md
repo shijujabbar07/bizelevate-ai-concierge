@@ -19,7 +19,7 @@ CustomerReach Answer means the phone is always answered. By an AI. In under two 
 
 ### What this capability does
 
-When a patient calls the CustomerReach Answer number, VAPI's AI voice assistant (Alex) answers immediately. Alex:
+When a patient calls the CustomerReach Answer number, VAPI's AI voice assistant (Casey) answers immediately. Casey:
 
 - Greets the patient professionally on behalf of the clinic
 - Explains they've reached after-hours or an automated intake line
@@ -58,20 +58,20 @@ Main clinic number ports to Twilio. VAPI answers all calls during configured hou
 
 **Scenario 1 — After-hours Sunday call:**
 
-> 7:14pm Sunday — James Nguyen Googles "emergency dentist Campsie" and finds Smile Dental.
+> 7:14pm Sunday — James Nguyen Googles "emergency dentist Campsie" and finds Riverside Dental.
 > Google Business Profile shows: "After-hours bookings: 0485 004 338"
-> James calls. Alex answers in 1.8 seconds.
-> Alex: *"Hi, you've reached Smile Dental's after-hours booking line. I'm Alex — I'll take your details and make sure the team calls you first thing Monday. Can I get your name?"*
+> James calls. Casey answers in 1.8 seconds.
+> Casey: *"Hi, you've reached Riverside Dental's after-hours booking line. I'm Casey — I'll take your details and make sure the team calls you first thing Monday. Can I get your name?"*
 > James gives name, number, reason (broken tooth, some pain), preferred callback: Monday 9am.
-> Alex confirms everything, ends call warmly.
-> 30 seconds later: James receives SMS — *"Hi James, thanks for calling Smile Dental. We'll call you Monday at 9am — our number is 0485 004 338."*
+> Casey confirms everything, ends call warmly.
+> 30 seconds later: James receives SMS — *"Hi James, thanks for calling Riverside Dental. We'll call you Monday at 9am — our number is 0485 004 338."*
 > Monday 8:55am: Receptionist sees James's intake in dashboard, calls him at 9am as promised.
 
 **Scenario 2 — Busy mid-day, receptionist unavailable:**
 
 > 12:47pm Tuesday — Sarah calls the clinic. Receptionist is with a patient.
 > Call forwards to VAPI (via conditional forwarding or timeout routing).
-> Alex takes Sarah's intake in under 90 seconds.
+> Casey takes Sarah's intake in under 90 seconds.
 > Receptionist returns at 1:15pm, sees Sarah's entry in Google Sheets, calls her back.
 
 ---
@@ -96,7 +96,7 @@ Main clinic number ports to Twilio. VAPI answers all calls during configured hou
 - **Emergency detection** — urgent cases flagged immediately
 - **No extra staff** — zero labour cost for after-hours coverage
 
-**The pitch:** *"Call this number after hours."* [Call it during demo. Alex answers. Patient gets SMS.] *"That just happened with zero staff involved."*
+**The pitch:** *"Call this number after hours."* [Call it during demo. Casey answers. Patient gets SMS.] *"That just happened with zero staff involved."*
 
 ---
 
@@ -108,7 +108,7 @@ CustomerReach Answer **answers** calls. CustomerReach Respond is the **safety ne
 Patient calls the clinic number
   │
   ├── VAPI active (after hours / overflow configured)
-  │     └── Alex answers → intake → SMS confirmation → logged
+  │     └── Casey answers → intake → SMS confirmation → logged
   │
   └── VAPI unavailable (rare) or call not routed to VAPI
         └── CustomerReach Respond fires → SMS within 10 seconds
@@ -122,7 +122,7 @@ Together they ensure zero patients reach silence.
 
 ### Flow (Happy Path)
 ```
-Patient calls VAPI number → Alex answers → collects intake →
+Patient calls VAPI number → Casey answers → collects intake →
 call ends → VAPI fires end-of-call-report webhook →
 n8n receives webhook → classify urgency → validate phone →
 send patient SMS confirmation → send owner summary SMS →
@@ -142,14 +142,14 @@ VAPI end-of-call-report webhook fires after every call.
 
 ## 2. VAPI Configuration
 
-### Assistant: Alex
-- **Active prompt:** `appointment-concierge/vapi/prompts/alex-v2-intake-only.md`
+### Assistant: Casey
+- **Active prompt:** `appointment-concierge/vapi/prompts/casey-v2-intake-only.md`
 - **No tools configured** — all data flows via end-of-call-report webhook only
 - **Voice:** professional, warm, unhurried
 - **End-of-call:** VAPI fires webhook with full transcript
 
 ### Data Extraction
-Alex collects everything via conversation. n8n's Decision Agent extracts:
+Casey collects everything via conversation. n8n's Decision Agent extracts:
 - `patient_name` — first name
 - `patient_phone` — callback number
 - `preferred_callback` — day + time slot
@@ -211,7 +211,7 @@ CustomerReach Answer is included from Core tier upwards.
 ## 5. The Demo in 90 Seconds
 
 1. Call the CustomerReach Answer demo number: `+61 485 004 338`
-2. Alex answers immediately
+2. Casey answers immediately
 3. Give a fake name, your mobile number, any reason
 4. End call
 5. Show the SMS arriving on your phone

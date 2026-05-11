@@ -20,9 +20,9 @@ set
   owner_phone    = '+61400000001',
   owner_channel  = 'sms',
   timezone       = 'Australia/Sydney',
-  booking_link   = 'https://calendly.com/smile-dental-campsie',
+  booking_link   = 'https://calendly.com/riverside-dental',
   business_hours = '{"start": 8, "end": 18, "days": [1, 2, 3, 4, 5]}'::jsonb
-where id = 'smile-dental';
+where id = 'riverside-dental';
 
 -- ── 2. Map Twilio numbers to client + capability ──────────────────────────────
 
@@ -35,8 +35,8 @@ where id = 'smile-dental';
 
 insert into phone_number_map (phone_number, client_id, capability)
 values
-  ('+61485034338', 'smile-dental', 'missed_call'),
-  ('+61485004338', 'smile-dental', 'appointment_concierge');
+  ('+61485034338', 'riverside-dental', 'missed_call'),
+  ('+61485004338', 'riverside-dental', 'appointment_concierge');
 
 -- ── 3. Insert missed_call subscription (Respond capability) ──────────────────
 
@@ -45,5 +45,5 @@ values
 -- ON CONFLICT guard prevents duplicate if this seed is re-run.
 
 insert into client_subscriptions (client_id, capability)
-values ('smile-dental', 'missed_call')
+values ('riverside-dental', 'missed_call')
 on conflict (client_id, capability) do nothing;

@@ -17,7 +17,7 @@
 
 ### Tasks
 
-- [ ] **Alex offers 3 callback time slots**
+- [ ] **Casey offers 3 callback time slots**
   Add to prompt after confirming patient details:
   *"Our team can call you back at 9am, 11am, or 2pm today — which suits you best?"*
   Capture chosen slot in the end-of-call summary field.
@@ -174,7 +174,7 @@ Hold this for Phase 2 unless a client explicitly asks for WhatsApp.
   - [ ] NO branch → IF node: `body.includes('HOURS')`
     - [ ] YES branch:
       - Fetch client hours from Supabase `clients` table
-      - Send SMS: *"Smile Dental is open Mon–Fri 8:30am–5:30pm, Sat 9am–1pm. Call us on [number]."*
+      - Send SMS: *"Riverside Dental is open Mon–Fri 8:30am–5:30pm, Sat 9am–1pm. Call us on [number]."*
     - [ ] NO branch: no action (or generic: *"Reply BOOK to request a callback or HOURS for our opening times."*)
 
 ### 3C — Twilio Configuration
@@ -242,7 +242,7 @@ Hold this for Phase 2 unless a client explicitly asks for WhatsApp.
 | VAPI call during hours — routine | SMS with callback slot, logged to Supabase | |
 | VAPI call after hours — routine | After-hours SMS with tomorrow callback | |
 | VAPI call — emergency urgency | Owner SMS fires immediately, flagged as emergency in dashboard | |
-| VAPI call — FAQ question asked | Correct FAQ answer given by Alex | |
+| VAPI call — FAQ question asked | Correct FAQ answer given by Casey | |
 | Dashboard callback queue | Pending tasks show, can mark complete | |
 | Dashboard funnel widget | Shows correct counts for current week | |
 | Daily summary (manual trigger) | Email/SMS received with accurate data | |
@@ -261,7 +261,7 @@ Hold this for Phase 2 unless a client explicitly asks for WhatsApp.
 ### 5C — Demo Script (Concierge Demo)
 
 1. Call VAPI demo number
-2. Alex answers — go through routine booking (name, phone, slot preference, reason)
+2. Casey answers — go through routine booking (name, phone, slot preference, reason)
 3. Choose "11am" as preferred callback slot
 4. Confirm details — end call
 5. Show SMS received immediately with specific callback time

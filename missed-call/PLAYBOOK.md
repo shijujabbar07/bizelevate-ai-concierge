@@ -23,7 +23,7 @@ This is the gap that CustomerReach Respond fills.
 
 The moment a call goes unanswered — the phone rings out, no one picks up — the patient receives an SMS within **5–10 seconds**:
 
-> *"Hi, we missed your call at Smile Dental Campsie. We would love to help — call us back on +61 485 004 338 or reply to book an appointment."*
+> *"Hi, we missed your call at Riverside Dental. We would love to help — call us back on +61 485 004 338 or reply to book an appointment."*
 
 That's it. Simple. Fast. Automatic.
 
@@ -91,19 +91,19 @@ missed call SMS, after-hours AI, time-based routing. Best long-term outcome.
 
 **Option 2 in action — busy Tuesday morning:**
 
-> 9:14am — A new patient calls Smile Dental on 03 9123 4567 (unchanged main number).
+> 9:14am — A new patient calls Riverside Dental on 03 9123 4567 (unchanged main number).
 > The receptionist is with a patient. The phone rings for 20 seconds. Nobody picks up.
 > The landline's forwarding rule kicks in — call forwards to the Twilio number.
 > Twilio plays: *"Thanks for calling. We missed your call — we'll send you a text now."*
 > 9:14am + 12 seconds — The patient's mobile receives an SMS:
-> *"Hi, we missed your call at Smile Dental. We're with patients — reply BOOK and we'll call you right back."*
+> *"Hi, we missed your call at Riverside Dental. We're with patients — reply BOOK and we'll call you right back."*
 > The patient's original call was to the clinic's unchanged number. They never knew about Twilio.
 
 **Option 1 in action — after-hours:**
 
-> 7:30pm — A prospective patient Googles "dentist Campsie" and finds Smile Dental.
+> 7:30pm — A prospective patient Googles "dentist Campsie" and finds Riverside Dental.
 > Google Business Profile shows two numbers: main (03 9123 4567) and "After-hours bookings" (04XX XXX XXX).
-> They call the after-hours number. CustomerReach Answer (VAPI) answers. Alex takes their details.
+> They call the after-hours number. CustomerReach Answer (VAPI) answers. Casey takes their details.
 > Alternatively, if VAPI misses the call: CustomerReach Respond fires an SMS automatically.
 
 ---
@@ -145,7 +145,7 @@ Patient calls the clinic number
   │
   └── After hours / weekends
         ├── VAPI active → CustomerReach Answer answers
-        │     └── Alex takes appointment request → SMS confirmation
+        │     └── Casey takes appointment request → SMS confirmation
         └── VAPI unavailable (rare)
               └── Respond fires as safety net → SMS within 10 seconds
 ```
@@ -620,7 +620,7 @@ In Twilio Console → Phone Numbers → Active Numbers → click `+61485004338`:
 ### Step 4: Test
 
 Call `+61485004338` from your mobile. Let it ring out. Within 10 seconds you should:
-1. Receive SMS: "Hi, we missed your call at Smile Dental Campsie..."
+1. Receive SMS: "Hi, we missed your call at Riverside Dental..."
 2. See execution in n8n Executions tab
 3. See row in Supabase `call_logs` with `capability='missed_call'`, `sms_sent=true`
 
@@ -673,7 +673,7 @@ Phases map directly to product tiers. Phase 1 completion = Starter + Core sellab
 - [ ] Callback task creation on CALL reply — Respond + dashboard (callback_tasks table exists, not yet written)
 - [ ] Daily missed call summary email to clinic owner — Respond
 - [ ] Recovery rate + conversion tracking — dashboard funnel widget
-- [ ] Answer: Alex offers 3 callback time slots — VAPI prompt
+- [ ] Answer: Casey offers 3 callback time slots — VAPI prompt
 - [ ] Answer: SMS includes specific callback time — n8n template
 - [ ] Answer: Emergency owner SMS alert — IF node + Twilio
 - [ ] Answer: FAQ capability (5–10 common questions) — VAPI prompt
@@ -735,7 +735,7 @@ The two capabilities are complementary and sold together as the **Core tier ($49
 |----------|------------|
 | Patient calls during business hours, staff answers | Normal call — no automation |
 | Patient calls during business hours, no answer | CustomerReach Respond — SMS within 10 seconds |
-| Patient calls after hours | CustomerReach Answer — Alex answers, takes request |
+| Patient calls after hours | CustomerReach Answer — Casey answers, takes request |
 | Patient replies BOOK to Respond SMS | Callback task created, staff actioned via dashboard |
 | Answer classifies urgency = emergency | Owner SMS alert fires immediately |
 
