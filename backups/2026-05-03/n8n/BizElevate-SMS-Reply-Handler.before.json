@@ -1,0 +1,447 @@
+{
+  "updatedAt": "2026-03-12T05:30:54.415Z",
+  "createdAt": "2026-03-12T05:30:54.415Z",
+  "id": "q4CYSzFYuYfp1eWa",
+  "name": "BizElevate SMS Reply Handler",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sms-reply",
+        "options": {}
+      },
+      "id": "sms-reply-webhook",
+      "name": "SMS Reply Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        304
+      ],
+      "webhookId": "bmcr-sms-reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Twilio inbound SMS POSTs form-encoded data.\n// n8n parses it into $json directly or nested under $json.body.\nconst raw = $input.item.json.body || $input.item.json;\n\nconst from   = (raw.From       || '').trim();\nconst to     = (raw.To         || '').trim();\nconst body   = (raw.Body       || '').trim();\nconst msgSid = (raw.MessageSid || '').trim();\n\nreturn [{ json: { from, to, body, msgSid } }];"
+      },
+      "id": "normalize-sms",
+      "name": "Normalize SMS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Classify the reply intent and build the Supabase PATCH payload.\n// Detects: CALL, CALL ME (case-insensitive, trimmed)\nconst body = ($json.body || '').trim();\nconst isCallback = /^call( me)?$/i.test(body);\n\nreturn [{\n  json: {\n    from:    $json.from,\n    to:      $json.to,\n    intent:  isCallback ? 'callback' : 'other',\n    updatePayload: {\n      reply_received:     true,\n      reply_intent:       isCallback ? 'callback' : 'other',\n      callback_requested: isCallback\n    }\n  }\n}];"
+      },
+      "id": "detect-intent",
+      "name": "Detect Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/call_logs?select=id&patient_phone=eq.{{ encodeURIComponent($json.from) }}&sms_sent=eq.true&order=created_at.desc&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "lookup-call-log",
+      "name": "Lookup Call Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        672,
+        304
+      ],
+      "onError": "stopWorkflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Safe extraction of call log ID from Supabase array response.\n// Returns [] (stops execution) if no matching call log is found.\nconst result = $input.item.json;\nconst rows = Array.isArray(result) ? result : (result.id ? [result] : []);\n\nif (!rows[0] || !rows[0].id) {\n  // No call log found for this phone number â€” silently drop\n  return [];\n}\n\nreturn [{\n  json: {\n    callLogId:     rows[0].id,\n    from:          $('Detect Intent').item.json.from,\n    intent:        $('Detect Intent').item.json.intent,\n    updatePayload: $('Detect Intent').item.json.updatePayload\n  }\n}];"
+      },
+      "id": "extract-call-log-id",
+      "name": "Extract Call Log ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/call_logs?id=eq.{{ $json.callLogId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "reply_received",
+              "value": "=true"
+            },
+            {
+              "name": "reply_intent",
+              "value": "={{ $json.intent }}"
+            },
+            {
+              "name": "callback_requested",
+              "value": "={{ $json.updatePayload.callback_requested }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-call-log",
+      "name": "Update Call Log",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        304
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "SMS Reply Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize SMS": {
+      "main": [
+        [
+          {
+            "node": "Detect Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Intent": {
+      "main": [
+        [
+          {
+            "node": "Lookup Call Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Call Log": {
+      "main": [
+        [
+          {
+            "node": "Extract Call Log ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Call Log ID": {
+      "main": [
+        [
+          {
+            "node": "Update Call Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "8c4094a8-5620-444f-aca5-dce0f284ed2f",
+  "activeVersionId": "8c4094a8-5620-444f-aca5-dce0f284ed2f",
+  "versionCounter": 6,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-12T05:30:54.417Z",
+      "createdAt": "2026-03-12T05:30:54.417Z",
+      "role": "workflow:owner",
+      "workflowId": "q4CYSzFYuYfp1eWa",
+      "projectId": "2R2MV4SkSQnvI5lj",
+      "project": {
+        "updatedAt": "2026-01-09T21:04:26.310Z",
+        "createdAt": "2026-01-09T21:04:20.780Z",
+        "id": "2R2MV4SkSQnvI5lj",
+        "name": "Shiju Jabbar <support@bizelevate.au>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "25794552-ac5e-4908-9628-702827419423"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-03-12T05:30:54.445Z",
+    "createdAt": "2026-03-12T05:30:54.445Z",
+    "versionId": "8c4094a8-5620-444f-aca5-dce0f284ed2f",
+    "workflowId": "q4CYSzFYuYfp1eWa",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "sms-reply",
+          "options": {}
+        },
+        "id": "sms-reply-webhook",
+        "name": "SMS Reply Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          304
+        ],
+        "webhookId": "bmcr-sms-reply"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Twilio inbound SMS POSTs form-encoded data.\n// n8n parses it into $json directly or nested under $json.body.\nconst raw = $input.item.json.body || $input.item.json;\n\nconst from   = (raw.From       || '').trim();\nconst to     = (raw.To         || '').trim();\nconst body   = (raw.Body       || '').trim();\nconst msgSid = (raw.MessageSid || '').trim();\n\nreturn [{ json: { from, to, body, msgSid } }];"
+        },
+        "id": "normalize-sms",
+        "name": "Normalize SMS",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Classify the reply intent and build the Supabase PATCH payload.\n// Detects: CALL, CALL ME (case-insensitive, trimmed)\nconst body = ($json.body || '').trim();\nconst isCallback = /^call( me)?$/i.test(body);\n\nreturn [{\n  json: {\n    from:    $json.from,\n    to:      $json.to,\n    intent:  isCallback ? 'callback' : 'other',\n    updatePayload: {\n      reply_received:     true,\n      reply_intent:       isCallback ? 'callback' : 'other',\n      callback_requested: isCallback\n    }\n  }\n}];"
+        },
+        "id": "detect-intent",
+        "name": "Detect Intent",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/call_logs?select=id&patient_phone=eq.{{ encodeURIComponent($json.from) }}&sms_sent=eq.true&order=created_at.desc&limit=1",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "lookup-call-log",
+        "name": "Lookup Call Log",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          672,
+          304
+        ],
+        "onError": "stopWorkflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Safe extraction of call log ID from Supabase array response.\n// Returns [] (stops execution) if no matching call log is found.\nconst result = $input.item.json;\nconst rows = Array.isArray(result) ? result : (result.id ? [result] : []);\n\nif (!rows[0] || !rows[0].id) {\n  // No call log found for this phone number â€” silently drop\n  return [];\n}\n\nreturn [{\n  json: {\n    callLogId:     rows[0].id,\n    from:          $('Detect Intent').item.json.from,\n    intent:        $('Detect Intent').item.json.intent,\n    updatePayload: $('Detect Intent').item.json.updatePayload\n  }\n}];"
+        },
+        "id": "extract-call-log-id",
+        "name": "Extract Call Log ID",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          896,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/call_logs?id=eq.{{ $json.callLogId }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "reply_received",
+                "value": "=true"
+              },
+              {
+                "name": "reply_intent",
+                "value": "={{ $json.intent }}"
+              },
+              {
+                "name": "callback_requested",
+                "value": "={{ $json.updatePayload.callback_requested }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "update-call-log",
+        "name": "Update Call Log",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1120,
+          304
+        ],
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "SMS Reply Webhook": {
+        "main": [
+          [
+            {
+              "node": "Normalize SMS",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize SMS": {
+        "main": [
+          [
+            {
+              "node": "Detect Intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Detect Intent": {
+        "main": [
+          [
+            {
+              "node": "Lookup Call Log",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Lookup Call Log": {
+        "main": [
+          [
+            {
+              "node": "Extract Call Log ID",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Call Log ID": {
+        "main": [
+          [
+            {
+              "node": "Update Call Log",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Shiju Jabbar",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-03-12T05:51:57.917Z",
+        "id": 60,
+        "workflowId": "q4CYSzFYuYfp1eWa",
+        "versionId": "8c4094a8-5620-444f-aca5-dce0f284ed2f",
+        "event": "activated",
+        "userId": "25794552-ac5e-4908-9628-702827419423"
+      }
+    ]
+  }
+}

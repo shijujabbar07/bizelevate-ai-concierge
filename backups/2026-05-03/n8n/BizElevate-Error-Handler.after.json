@@ -1,0 +1,211 @@
+{
+  "updatedAt": "2026-03-09T21:52:11.463Z",
+  "createdAt": "2026-03-09T21:52:11.463Z",
+  "id": "jH1zMn2CbFpDX3PY",
+  "name": "BizElevate Error Handler",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "node-error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "node-format-alert",
+      "name": "Format Slack Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        470,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const d = $input.item.json;\nconst workflowName = d.workflow?.name || 'Unknown Workflow';\nconst execId = d.execution?.id || 'unknown';\nconst errorMsg = (d.execution?.error?.message || 'No error message').substring(0, 300);\nconst lastNode = d.execution?.lastNodeExecuted || 'unknown';\n\nconst text = ':rotating_light: *Workflow Failure* — ' + workflowName + '\\n' +\n  '*Error:* ' + errorMsg + '\\n' +\n  '*Last node:* ' + lastNode + '\\n' +\n  '*Execution ID:* ' + execId + '\\n' +\n  'Open n8n \\u2192 Executions \\u2192 Retry to recover.';\n\nreturn [{ json: { text: text, channel: 'C0A7ULJ84CE' } }];"
+      }
+    },
+    {
+      "id": "node-slack-post",
+      "name": "Slack Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        690,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify({ channel: $json.channel, text: $json.text }) }}"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "VurKfpPzTuq3sbP2",
+          "name": "Slack  Header Auth"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Alert": {
+      "main": [
+        [
+          {
+            "node": "Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "9553c8ce-2dc6-4cb7-aa38-52c4229e72f8",
+  "activeVersionId": "9553c8ce-2dc6-4cb7-aa38-52c4229e72f8",
+  "versionCounter": 6,
+  "triggerCount": 0,
+  "shared": [
+    {
+      "updatedAt": "2026-03-09T21:52:11.465Z",
+      "createdAt": "2026-03-09T21:52:11.465Z",
+      "role": "workflow:owner",
+      "workflowId": "jH1zMn2CbFpDX3PY",
+      "projectId": "2R2MV4SkSQnvI5lj",
+      "project": {
+        "updatedAt": "2026-01-09T21:04:26.310Z",
+        "createdAt": "2026-01-09T21:04:20.780Z",
+        "id": "2R2MV4SkSQnvI5lj",
+        "name": "Shiju Jabbar <support@bizelevate.au>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "25794552-ac5e-4908-9628-702827419423"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-03-09T21:52:11.498Z",
+    "createdAt": "2026-03-09T21:52:11.498Z",
+    "versionId": "9553c8ce-2dc6-4cb7-aa38-52c4229e72f8",
+    "workflowId": "jH1zMn2CbFpDX3PY",
+    "nodes": [
+      {
+        "id": "node-error-trigger",
+        "name": "Error Trigger",
+        "type": "n8n-nodes-base.errorTrigger",
+        "typeVersion": 1,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "node-format-alert",
+        "name": "Format Slack Alert",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          470,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const d = $input.item.json;\nconst workflowName = d.workflow?.name || 'Unknown Workflow';\nconst execId = d.execution?.id || 'unknown';\nconst errorMsg = (d.execution?.error?.message || 'No error message').substring(0, 300);\nconst lastNode = d.execution?.lastNodeExecuted || 'unknown';\n\nconst text = ':rotating_light: *Workflow Failure* — ' + workflowName + '\\n' +\n  '*Error:* ' + errorMsg + '\\n' +\n  '*Last node:* ' + lastNode + '\\n' +\n  '*Execution ID:* ' + execId + '\\n' +\n  'Open n8n \\u2192 Executions \\u2192 Retry to recover.';\n\nreturn [{ json: { text: text, channel: 'C0A7ULJ84CE' } }];"
+        }
+      },
+      {
+        "id": "node-slack-post",
+        "name": "Slack Alert",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          690,
+          300
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://slack.com/api/chat.postMessage",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "contentType": "json",
+          "jsonBody": "={{ JSON.stringify({ channel: $json.channel, text: $json.text }) }}"
+        },
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "VurKfpPzTuq3sbP2",
+            "name": "Slack  Header Auth"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Error Trigger": {
+        "main": [
+          [
+            {
+              "node": "Format Slack Alert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Slack Alert": {
+        "main": [
+          [
+            {
+              "node": "Slack Alert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Shiju Jabbar",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-03-09T21:52:27.573Z",
+        "id": 45,
+        "workflowId": "jH1zMn2CbFpDX3PY",
+        "versionId": "9553c8ce-2dc6-4cb7-aa38-52c4229e72f8",
+        "event": "activated",
+        "userId": "25794552-ac5e-4908-9628-702827419423"
+      }
+    ]
+  }
+}

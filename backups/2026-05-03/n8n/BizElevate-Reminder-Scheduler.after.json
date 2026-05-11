@@ -1,0 +1,1033 @@
+{
+  "updatedAt": "2026-03-24T21:14:49.426Z",
+  "createdAt": "2026-03-19T06:29:15.083Z",
+  "id": "wN3cyY7o0kJhk9DS",
+  "name": "BizElevate Reminder Scheduler",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "reminder-schedule-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointment_reminders?select=*,appointment:appointments!appointment_id(patient_name,patient_surname,mobile,email,appointment_datetime,status)&reminder_status=in.(pending,scheduled)&scheduled_for=lte.{{ new Date().toISOString() }}&order=scheduled_for.asc&limit=50",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-due-reminders",
+      "name": "Fetch Due Reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        304
+      ],
+      "onError": "stopWorkflow"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "check-has-items",
+              "leftValue": "={{ $json.id ? 1 : 0 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "any-due",
+      "name": "Any Due?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        448,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// HTTP Request v4.2 splits JSON array responses into individual items (one per row).\n// Code node runs once for all items — pass all through unchanged.\nreturn $input.all().map(item => ({ json: item.json }));"
+      },
+      "id": "split-reminders",
+      "name": "Split Reminders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/clients?select=id,name,owner_phone,timezone&id=eq.{{ $json.client_id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-client-config",
+      "name": "Fetch Client Config",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        304
+      ],
+      "onError": "stopWorkflow"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/phone_number_map?select=phone_number&client_id=eq.{{ $('Split Reminders').item.json.client_id }}&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-twilio-number",
+      "name": "Fetch Twilio Number",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        304
+      ],
+      "onError": "stopWorkflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge reminder + client config + Twilio number into one context object.\n// Composes the SMS body based on reminder_type (48h vs 2h tone).\n\nconst reminder   = $('Split Reminders').item.json;\nconst appt       = reminder.appointment || {};\n\nconst clientRaw  = $('Fetch Client Config').item.json;\nconst client     = Array.isArray(clientRaw) ? clientRaw[0] : clientRaw;\n\nconst numRaw     = $input.item.json;\nconst numRow     = Array.isArray(numRaw) ? numRaw[0] : numRaw;\nconst twilioFrom = numRow && numRow.phone_number;\n\nif (!client || !client.id) {\n  throw new Error('No client config for client_id: ' + reminder.client_id);\n}\nif (!twilioFrom) {\n  throw new Error('No Twilio number found for client_id: ' + reminder.client_id);\n}\nif (!appt.patient_name) {\n  throw new Error('Missing appointment data for reminder id: ' + reminder.id);\n}\n\n// Belt-and-suspenders: skip reminders whose appointment was cancelled\n// (reminder_status should already be 'cancelled' via cancelAppointment(), but guard here)\nif (appt.status && appt.status !== 'active') return [];\n\nconst tz       = client.timezone || 'Australia/Sydney';\nconst apptDate = new Date(appt.appointment_datetime);\nconst dayName  = apptDate.toLocaleDateString('en-AU', { weekday: 'long',  timeZone: tz });\nconst dateStr  = apptDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', timeZone: tz });\nconst timeStr  = apptDate.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz });\n\nconst patientName = [appt.patient_name, appt.patient_surname].filter(Boolean).join(' ');\nconst clinicName  = client.name;\n\nlet smsBody;\nif (reminder.reminder_type === '48h') {\n  smsBody = `Hi ${patientName}, a reminder that you have an appointment at ${clinicName} on ${dayName} ${dateStr} at ${timeStr}.\\n\\nReply CONFIRM to confirm or CANCEL to cancel.\\n\\n\\u2013 ${clinicName} Team`;\n} else {\n  smsBody = `Hi ${patientName}, just a reminder \\u2014 your appointment at ${clinicName} is today at ${timeStr}.\\n\\nWe'll see you soon. Reply CANCEL if you can no longer make it.\\n\\n\\u2013 ${clinicName} Team`;\n}\n\nreturn [{\n  json: {\n    reminderId:    reminder.id,\n    clientId:      reminder.client_id,\n    patientMobile: appt.mobile,\n    twilioFrom,\n    smsBody,\n    ownerPhone:    client.owner_phone || null,\n    patientName,\n    clinicName,\n    apptDatetime:  appt.appointment_datetime,\n    reminderType:  reminder.reminder_type\n  }\n}];"
+      },
+      "id": "build-sms",
+      "name": "Build SMS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/AC907df5d9b5370eb5dd779a5b77754374/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "={{ $json.twilioFrom }}"
+            },
+            {
+              "name": "To",
+              "value": "={{ $json.patientMobile }}"
+            },
+            {
+              "name": "Body",
+              "value": "={{ $json.smsBody }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-sms",
+      "name": "Send SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        304
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Vpy229UTG1RYrPP0",
+          "name": "Twilio Basic Auth"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointment_reminders?id=eq.{{ $('Build SMS').item.json.reminderId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "reminder_status",
+              "value": "sent"
+            },
+            {
+              "name": "sent_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mark-sent",
+      "name": "Mark Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1792,
+        192
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointment_reminders?id=eq.{{ $('Build SMS').item.json.reminderId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "reminder_status",
+              "value": "failed"
+            },
+            {
+              "name": "failure_reason",
+              "value": "={{ 'SMS dispatch failed: ' + ($json.message || ($json.error && $json.error.message) || 'Unknown error') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "mark-failed",
+      "name": "Mark Failed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1792,
+        448
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointments?select=id&status=eq.active&appointment_datetime=lt.{{ new Date(Date.now() - 2*60*60*1000).toISOString() }}&order=appointment_datetime.asc&limit=50",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-overdue-appointments",
+      "name": "Fetch Overdue Appointments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        224,
+        528
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointments?id=eq.{{ $json.id }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"completed\" }",
+        "options": {}
+      },
+      "id": "mark-appointments-completed",
+      "name": "Mark Appointments Completed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        528
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Due Reminders",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Overdue Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Due Reminders": {
+      "main": [
+        [
+          {
+            "node": "Any Due?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any Due?": {
+      "main": [
+        [
+          {
+            "node": "Split Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Split Reminders": {
+      "main": [
+        [
+          {
+            "node": "Fetch Client Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Client Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Twilio Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Twilio Number": {
+      "main": [
+        [
+          {
+            "node": "Build SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build SMS": {
+      "main": [
+        [
+          {
+            "node": "Send SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send SMS": {
+      "main": [
+        [
+          {
+            "node": "Mark Sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Overdue Appointments": {
+      "main": [
+        [
+          {
+            "node": "Mark Appointments Completed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": {
+    "node:Schedule Trigger": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "pinData": null,
+  "versionId": "650caa9a-df64-4b69-9057-a603b7ebdd03",
+  "activeVersionId": "650caa9a-df64-4b69-9057-a603b7ebdd03",
+  "versionCounter": 16,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-19T06:29:15.086Z",
+      "createdAt": "2026-03-19T06:29:15.086Z",
+      "role": "workflow:owner",
+      "workflowId": "wN3cyY7o0kJhk9DS",
+      "projectId": "2R2MV4SkSQnvI5lj",
+      "project": {
+        "updatedAt": "2026-01-09T21:04:26.310Z",
+        "createdAt": "2026-01-09T21:04:20.780Z",
+        "id": "2R2MV4SkSQnvI5lj",
+        "name": "Shiju Jabbar <support@bizelevate.au>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "25794552-ac5e-4908-9628-702827419423"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-03-24T21:14:49.427Z",
+    "createdAt": "2026-03-24T21:14:49.427Z",
+    "versionId": "650caa9a-df64-4b69-9057-a603b7ebdd03",
+    "workflowId": "wN3cyY7o0kJhk9DS",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 15
+              }
+            ]
+          }
+        },
+        "id": "reminder-schedule-trigger",
+        "name": "Schedule Trigger",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointment_reminders?select=*,appointment:appointments!appointment_id(patient_name,patient_surname,mobile,email,appointment_datetime,status)&reminder_status=in.(pending,scheduled)&scheduled_for=lte.{{ new Date().toISOString() }}&order=scheduled_for.asc&limit=50",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "fetch-due-reminders",
+        "name": "Fetch Due Reminders",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          224,
+          304
+        ],
+        "onError": "stopWorkflow"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "check-has-items",
+                "leftValue": "={{ $json.id ? 1 : 0 }}",
+                "rightValue": 0,
+                "operator": {
+                  "type": "number",
+                  "operation": "gt"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "any-due",
+        "name": "Any Due?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          448,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// HTTP Request v4.2 splits JSON array responses into individual items (one per row).\n// Code node runs once for all items — pass all through unchanged.\nreturn $input.all().map(item => ({ json: item.json }));"
+        },
+        "id": "split-reminders",
+        "name": "Split Reminders",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          672,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/clients?select=id,name,owner_phone,timezone&id=eq.{{ $json.client_id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "fetch-client-config",
+        "name": "Fetch Client Config",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          896,
+          304
+        ],
+        "onError": "stopWorkflow"
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/phone_number_map?select=phone_number&client_id=eq.{{ $('Split Reminders').item.json.client_id }}&limit=1",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "fetch-twilio-number",
+        "name": "Fetch Twilio Number",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1120,
+          304
+        ],
+        "onError": "stopWorkflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Merge reminder + client config + Twilio number into one context object.\n// Composes the SMS body based on reminder_type (48h vs 2h tone).\n\nconst reminder   = $('Split Reminders').item.json;\nconst appt       = reminder.appointment || {};\n\nconst clientRaw  = $('Fetch Client Config').item.json;\nconst client     = Array.isArray(clientRaw) ? clientRaw[0] : clientRaw;\n\nconst numRaw     = $input.item.json;\nconst numRow     = Array.isArray(numRaw) ? numRaw[0] : numRaw;\nconst twilioFrom = numRow && numRow.phone_number;\n\nif (!client || !client.id) {\n  throw new Error('No client config for client_id: ' + reminder.client_id);\n}\nif (!twilioFrom) {\n  throw new Error('No Twilio number found for client_id: ' + reminder.client_id);\n}\nif (!appt.patient_name) {\n  throw new Error('Missing appointment data for reminder id: ' + reminder.id);\n}\n\n// Belt-and-suspenders: skip reminders whose appointment was cancelled\n// (reminder_status should already be 'cancelled' via cancelAppointment(), but guard here)\nif (appt.status && appt.status !== 'active') return [];\n\nconst tz       = client.timezone || 'Australia/Sydney';\nconst apptDate = new Date(appt.appointment_datetime);\nconst dayName  = apptDate.toLocaleDateString('en-AU', { weekday: 'long',  timeZone: tz });\nconst dateStr  = apptDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', timeZone: tz });\nconst timeStr  = apptDate.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz });\n\nconst patientName = [appt.patient_name, appt.patient_surname].filter(Boolean).join(' ');\nconst clinicName  = client.name;\n\nlet smsBody;\nif (reminder.reminder_type === '48h') {\n  smsBody = `Hi ${patientName}, a reminder that you have an appointment at ${clinicName} on ${dayName} ${dateStr} at ${timeStr}.\\n\\nReply CONFIRM to confirm or CANCEL to cancel.\\n\\n\\u2013 ${clinicName} Team`;\n} else {\n  smsBody = `Hi ${patientName}, just a reminder \\u2014 your appointment at ${clinicName} is today at ${timeStr}.\\n\\nWe'll see you soon. Reply CANCEL if you can no longer make it.\\n\\n\\u2013 ${clinicName} Team`;\n}\n\nreturn [{\n  json: {\n    reminderId:    reminder.id,\n    clientId:      reminder.client_id,\n    patientMobile: appt.mobile,\n    twilioFrom,\n    smsBody,\n    ownerPhone:    client.owner_phone || null,\n    patientName,\n    clinicName,\n    apptDatetime:  appt.appointment_datetime,\n    reminderType:  reminder.reminder_type\n  }\n}];"
+        },
+        "id": "build-sms",
+        "name": "Build SMS",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1344,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.twilio.com/2010-04-01/Accounts/AC907df5d9b5370eb5dd779a5b77754374/Messages.json",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBasicAuth",
+          "sendBody": true,
+          "contentType": "form-urlencoded",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "From",
+                "value": "={{ $json.twilioFrom }}"
+              },
+              {
+                "name": "To",
+                "value": "={{ $json.patientMobile }}"
+              },
+              {
+                "name": "Body",
+                "value": "={{ $json.smsBody }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "send-sms",
+        "name": "Send SMS",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1568,
+          304
+        ],
+        "credentials": {
+          "httpBasicAuth": {
+            "id": "Vpy229UTG1RYrPP0",
+            "name": "Twilio Basic Auth"
+          }
+        },
+        "onError": "continueErrorOutput"
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointment_reminders?id=eq.{{ $('Build SMS').item.json.reminderId }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "reminder_status",
+                "value": "sent"
+              },
+              {
+                "name": "sent_at",
+                "value": "={{ new Date().toISOString() }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "mark-sent",
+        "name": "Mark Sent",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1792,
+          192
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointment_reminders?id=eq.{{ $('Build SMS').item.json.reminderId }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "reminder_status",
+                "value": "failed"
+              },
+              {
+                "name": "failure_reason",
+                "value": "={{ 'SMS dispatch failed: ' + ($json.message || ($json.error && $json.error.message) || 'Unknown error') }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "mark-failed",
+        "name": "Mark Failed",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1792,
+          448
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointments?select=id&status=eq.active&appointment_datetime=lt.{{ new Date(Date.now() - 2*60*60*1000).toISOString() }}&order=appointment_datetime.asc&limit=50",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "fetch-overdue-appointments",
+        "name": "Fetch Overdue Appointments",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          224,
+          528
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointments?id=eq.{{ $json.id }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "{ \"status\": \"completed\" }",
+          "options": {}
+        },
+        "id": "mark-appointments-completed",
+        "name": "Mark Appointments Completed",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          448,
+          528
+        ],
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "Schedule Trigger": {
+        "main": [
+          [
+            {
+              "node": "Fetch Due Reminders",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Fetch Overdue Appointments",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Due Reminders": {
+        "main": [
+          [
+            {
+              "node": "Any Due?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Any Due?": {
+        "main": [
+          [
+            {
+              "node": "Split Reminders",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Split Reminders": {
+        "main": [
+          [
+            {
+              "node": "Fetch Client Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Client Config": {
+        "main": [
+          [
+            {
+              "node": "Fetch Twilio Number",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Twilio Number": {
+        "main": [
+          [
+            {
+              "node": "Build SMS",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build SMS": {
+        "main": [
+          [
+            {
+              "node": "Send SMS",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send SMS": {
+        "main": [
+          [
+            {
+              "node": "Mark Sent",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Mark Failed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Overdue Appointments": {
+        "main": [
+          [
+            {
+              "node": "Mark Appointments Completed",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Shiju Jabbar",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-03-24T21:14:49.653Z",
+        "id": 70,
+        "workflowId": "wN3cyY7o0kJhk9DS",
+        "versionId": "650caa9a-df64-4b69-9057-a603b7ebdd03",
+        "event": "activated",
+        "userId": "25794552-ac5e-4908-9628-702827419423"
+      },
+      {
+        "createdAt": "2026-03-24T21:14:49.553Z",
+        "id": 69,
+        "workflowId": "wN3cyY7o0kJhk9DS",
+        "versionId": "650caa9a-df64-4b69-9057-a603b7ebdd03",
+        "event": "deactivated",
+        "userId": "25794552-ac5e-4908-9628-702827419423"
+      }
+    ]
+  }
+}

@@ -1,0 +1,1133 @@
+{
+  "updatedAt": "2026-03-19T06:29:35.708Z",
+  "createdAt": "2026-03-19T06:29:35.708Z",
+  "id": "inmiGyHTCEP3a2hd",
+  "name": "BizElevate Reminder Reply Handler",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reminder-sms-reply",
+        "options": {}
+      },
+      "id": "reminder-reply-webhook",
+      "name": "SMS Reply Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        304
+      ],
+      "webhookId": "bizelevate-reminder-reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Twilio inbound SMS POSTs form-encoded data.\n// n8n parses it into $json directly or nested under $json.body.\nconst raw = $input.item.json.body || $input.item.json;\n\nconst from   = (raw.From       || '').trim();\nconst to     = (raw.To         || '').trim();\nconst body   = (raw.Body       || '').trim();\nconst msgSid = (raw.MessageSid || '').trim();\n\nreturn [{ json: { from, to, body, msgSid } }];"
+      },
+      "id": "normalize-sms",
+      "name": "Normalize SMS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Classify the SMS body into a reminder reply intent.\n// CONFIRM variants   → 'confirm'\n// CANCEL variants    → 'cancel'\n// Anything else      → 'other' (silently ignored)\nconst body = ($json.body || '').trim().toUpperCase();\n\nlet intent = 'other';\nif (/^CONFIRM$/.test(body)) {\n  intent = 'confirm';\n} else if (/^CANCEL( APPT(OINTMENT)?)?$/.test(body)) {\n  intent = 'cancel';\n}\n\nreturn [{\n  json: {\n    from:   $json.from,\n    to:     $json.to,\n    intent\n  }\n}];"
+      },
+      "id": "detect-intent",
+      "name": "Detect Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "check-actionable-intent",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "other",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-action",
+      "name": "Has Action?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        672,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointments?select=id,client_id,patient_name,patient_surname,mobile,appointment_datetime,status&mobile=eq.{{ encodeURIComponent($json.from) }}&status=eq.active&order=appointment_datetime.asc&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "lookup-appointment",
+      "name": "Lookup Appointment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        896,
+        304
+      ],
+      "onError": "stopWorkflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Safe extraction of appointment from Supabase array response.\n// Returns [] (stops execution) if no active appointment found.\nconst raw  = $input.item.json;\nconst rows = Array.isArray(raw) ? raw : (raw && raw.id ? [raw] : []);\n\nif (!rows[0] || !rows[0].id) {\n  // No active appointment for this phone number — silently drop\n  return [];\n}\n\nconst appt = rows[0];\nreturn [{\n  json: {\n    appointmentId:    appt.id,\n    clientId:         appt.client_id,\n    patientName:      [appt.patient_name, appt.patient_surname].filter(Boolean).join(' '),\n    mobile:           appt.mobile,\n    apptDatetime:     appt.appointment_datetime,\n    from:             $('Detect Intent').item.json.from,\n    to:               $('Detect Intent').item.json.to,\n    intent:           $('Detect Intent').item.json.intent\n  }\n}];"
+      },
+      "id": "extract-appointment",
+      "name": "Extract Appointment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/clients?select=id,name,owner_phone,timezone&id=eq.{{ $json.clientId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-client-config",
+      "name": "Fetch Client Config",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1344,
+        304
+      ],
+      "onError": "stopWorkflow"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/phone_number_map?select=phone_number&client_id=eq.{{ $('Extract Appointment').item.json.clientId }}&limit=1",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch-twilio-number",
+      "name": "Fetch Twilio Number",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1568,
+        304
+      ],
+      "onError": "stopWorkflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge appointment + client + Twilio number into reply context.\n// Composes the acknowledgement SMS based on intent (confirm vs cancel).\n\nconst apptCtx  = $('Extract Appointment').item.json;\n\nconst clientRaw = $('Fetch Client Config').item.json;\nconst client    = Array.isArray(clientRaw) ? clientRaw[0] : clientRaw;\n\nconst numRaw    = $input.item.json;\nconst numRow    = Array.isArray(numRaw) ? numRaw[0] : numRaw;\nconst twilioFrom = numRow && numRow.phone_number;\n\nif (!client || !client.id) {\n  throw new Error('No client config for client_id: ' + apptCtx.clientId);\n}\nif (!twilioFrom) {\n  throw new Error('No Twilio number for client_id: ' + apptCtx.clientId);\n}\n\nconst tz       = client.timezone || 'Australia/Sydney';\nconst apptDate = new Date(apptCtx.apptDatetime);\nconst dayName  = apptDate.toLocaleDateString('en-AU', { weekday: 'long', timeZone: tz });\nconst timeStr  = apptDate.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz });\n\nlet smsBody;\nif (apptCtx.intent === 'cancel') {\n  smsBody = `Hi ${apptCtx.patientName}, your appointment on ${dayName} at ${timeStr} has been cancelled. Please call us to rebook.\\n\\n\\u2013 ${client.name} Team`;\n} else {\n  smsBody = `Thanks ${apptCtx.patientName}, your appointment on ${dayName} at ${timeStr} is confirmed. See you then!\\n\\n\\u2013 ${client.name} Team`;\n}\n\nconst ownerAlert = apptCtx.intent === 'cancel'\n  ? `${apptCtx.patientName} cancelled their ${timeStr} appointment on ${dayName}. Slot is now available.`\n  : null;\n\nreturn [{\n  json: {\n    ...apptCtx,\n    twilioFrom,\n    twilioTo:   apptCtx.from,\n    smsBody,\n    ownerPhone: client.owner_phone || null,\n    ownerAlert,\n    clinicName: client.name,\n    isCancel:   apptCtx.intent === 'cancel'\n  }\n}];"
+      },
+      "id": "build-reply-context",
+      "name": "Build Reply Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/AC907df5d9b5370eb5dd779a5b77754374/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "={{ $json.twilioFrom }}"
+            },
+            {
+              "name": "To",
+              "value": "={{ $json.twilioTo }}"
+            },
+            {
+              "name": "Body",
+              "value": "={{ $json.smsBody }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "send-ack-sms",
+      "name": "Send Acknowledgement SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2016,
+        304
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Vpy229UTG1RYrPP0",
+          "name": "Twilio Basic Auth"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "check-is-cancel",
+              "leftValue": "={{ $('Build Reply Context').item.json.isCancel }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "is-cancel",
+      "name": "Is Cancel?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointments?id=eq.{{ $('Build Reply Context').item.json.appointmentId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "cancelled"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cancel-appointment",
+      "name": "Cancel Appointment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        192
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointment_reminders?appointment_id=eq.{{ $('Build Reply Context').item.json.appointmentId }}&reminder_status=in.(pending,scheduled)",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "reminder_status",
+              "value": "cancelled"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cancel-reminders",
+      "name": "Cancel Pending Reminders",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2688,
+        192
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/AC907df5d9b5370eb5dd779a5b77754374/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "={{ $('Build Reply Context').item.json.twilioFrom }}"
+            },
+            {
+              "name": "To",
+              "value": "={{ $('Build Reply Context').item.json.ownerPhone }}"
+            },
+            {
+              "name": "Body",
+              "value": "={{ $('Build Reply Context').item.json.ownerAlert }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "alert-owner",
+      "name": "Alert Clinic Owner",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2912,
+        192
+      ],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Vpy229UTG1RYrPP0",
+          "name": "Twilio Basic Auth"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "SMS Reply Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize SMS": {
+      "main": [
+        [
+          {
+            "node": "Detect Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Intent": {
+      "main": [
+        [
+          {
+            "node": "Has Action?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Action?": {
+      "main": [
+        [
+          {
+            "node": "Lookup Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Lookup Appointment": {
+      "main": [
+        [
+          {
+            "node": "Extract Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Appointment": {
+      "main": [
+        [
+          {
+            "node": "Fetch Client Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Client Config": {
+      "main": [
+        [
+          {
+            "node": "Fetch Twilio Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Twilio Number": {
+      "main": [
+        [
+          {
+            "node": "Build Reply Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Reply Context": {
+      "main": [
+        [
+          {
+            "node": "Send Acknowledgement SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Acknowledgement SMS": {
+      "main": [
+        [
+          {
+            "node": "Is Cancel?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Cancel?": {
+      "main": [
+        [
+          {
+            "node": "Cancel Appointment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Cancel Appointment": {
+      "main": [
+        [
+          {
+            "node": "Cancel Pending Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cancel Pending Reminders": {
+      "main": [
+        [
+          {
+            "node": "Alert Clinic Owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "170fa8d4-2716-49b8-8378-4389c42a9171",
+  "activeVersionId": "170fa8d4-2716-49b8-8378-4389c42a9171",
+  "versionCounter": 6,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-03-19T06:29:35.710Z",
+      "createdAt": "2026-03-19T06:29:35.710Z",
+      "role": "workflow:owner",
+      "workflowId": "inmiGyHTCEP3a2hd",
+      "projectId": "2R2MV4SkSQnvI5lj",
+      "project": {
+        "updatedAt": "2026-01-09T21:04:26.310Z",
+        "createdAt": "2026-01-09T21:04:20.780Z",
+        "id": "2R2MV4SkSQnvI5lj",
+        "name": "Shiju Jabbar <support@bizelevate.au>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "25794552-ac5e-4908-9628-702827419423"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-03-19T06:29:35.747Z",
+    "createdAt": "2026-03-19T06:29:35.747Z",
+    "versionId": "170fa8d4-2716-49b8-8378-4389c42a9171",
+    "workflowId": "inmiGyHTCEP3a2hd",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "reminder-sms-reply",
+          "options": {}
+        },
+        "id": "reminder-reply-webhook",
+        "name": "SMS Reply Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          304
+        ],
+        "webhookId": "bizelevate-reminder-reply"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Twilio inbound SMS POSTs form-encoded data.\n// n8n parses it into $json directly or nested under $json.body.\nconst raw = $input.item.json.body || $input.item.json;\n\nconst from   = (raw.From       || '').trim();\nconst to     = (raw.To         || '').trim();\nconst body   = (raw.Body       || '').trim();\nconst msgSid = (raw.MessageSid || '').trim();\n\nreturn [{ json: { from, to, body, msgSid } }];"
+        },
+        "id": "normalize-sms",
+        "name": "Normalize SMS",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Classify the SMS body into a reminder reply intent.\n// CONFIRM variants   → 'confirm'\n// CANCEL variants    → 'cancel'\n// Anything else      → 'other' (silently ignored)\nconst body = ($json.body || '').trim().toUpperCase();\n\nlet intent = 'other';\nif (/^CONFIRM$/.test(body)) {\n  intent = 'confirm';\n} else if (/^CANCEL( APPT(OINTMENT)?)?$/.test(body)) {\n  intent = 'cancel';\n}\n\nreturn [{\n  json: {\n    from:   $json.from,\n    to:     $json.to,\n    intent\n  }\n}];"
+        },
+        "id": "detect-intent",
+        "name": "Detect Intent",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "check-actionable-intent",
+                "leftValue": "={{ $json.intent }}",
+                "rightValue": "other",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEquals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "has-action",
+        "name": "Has Action?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          672,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointments?select=id,client_id,patient_name,patient_surname,mobile,appointment_datetime,status&mobile=eq.{{ encodeURIComponent($json.from) }}&status=eq.active&order=appointment_datetime.asc&limit=1",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "lookup-appointment",
+        "name": "Lookup Appointment",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          896,
+          304
+        ],
+        "onError": "stopWorkflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Safe extraction of appointment from Supabase array response.\n// Returns [] (stops execution) if no active appointment found.\nconst raw  = $input.item.json;\nconst rows = Array.isArray(raw) ? raw : (raw && raw.id ? [raw] : []);\n\nif (!rows[0] || !rows[0].id) {\n  // No active appointment for this phone number — silently drop\n  return [];\n}\n\nconst appt = rows[0];\nreturn [{\n  json: {\n    appointmentId:    appt.id,\n    clientId:         appt.client_id,\n    patientName:      [appt.patient_name, appt.patient_surname].filter(Boolean).join(' '),\n    mobile:           appt.mobile,\n    apptDatetime:     appt.appointment_datetime,\n    from:             $('Detect Intent').item.json.from,\n    to:               $('Detect Intent').item.json.to,\n    intent:           $('Detect Intent').item.json.intent\n  }\n}];"
+        },
+        "id": "extract-appointment",
+        "name": "Extract Appointment",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1120,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/clients?select=id,name,owner_phone,timezone&id=eq.{{ $json.clientId }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "fetch-client-config",
+        "name": "Fetch Client Config",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1344,
+          304
+        ],
+        "onError": "stopWorkflow"
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/phone_number_map?select=phone_number&client_id=eq.{{ $('Extract Appointment').item.json.clientId }}&limit=1",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "fetch-twilio-number",
+        "name": "Fetch Twilio Number",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1568,
+          304
+        ],
+        "onError": "stopWorkflow"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Merge appointment + client + Twilio number into reply context.\n// Composes the acknowledgement SMS based on intent (confirm vs cancel).\n\nconst apptCtx  = $('Extract Appointment').item.json;\n\nconst clientRaw = $('Fetch Client Config').item.json;\nconst client    = Array.isArray(clientRaw) ? clientRaw[0] : clientRaw;\n\nconst numRaw    = $input.item.json;\nconst numRow    = Array.isArray(numRaw) ? numRaw[0] : numRaw;\nconst twilioFrom = numRow && numRow.phone_number;\n\nif (!client || !client.id) {\n  throw new Error('No client config for client_id: ' + apptCtx.clientId);\n}\nif (!twilioFrom) {\n  throw new Error('No Twilio number for client_id: ' + apptCtx.clientId);\n}\n\nconst tz       = client.timezone || 'Australia/Sydney';\nconst apptDate = new Date(apptCtx.apptDatetime);\nconst dayName  = apptDate.toLocaleDateString('en-AU', { weekday: 'long', timeZone: tz });\nconst timeStr  = apptDate.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz });\n\nlet smsBody;\nif (apptCtx.intent === 'cancel') {\n  smsBody = `Hi ${apptCtx.patientName}, your appointment on ${dayName} at ${timeStr} has been cancelled. Please call us to rebook.\\n\\n\\u2013 ${client.name} Team`;\n} else {\n  smsBody = `Thanks ${apptCtx.patientName}, your appointment on ${dayName} at ${timeStr} is confirmed. See you then!\\n\\n\\u2013 ${client.name} Team`;\n}\n\nconst ownerAlert = apptCtx.intent === 'cancel'\n  ? `${apptCtx.patientName} cancelled their ${timeStr} appointment on ${dayName}. Slot is now available.`\n  : null;\n\nreturn [{\n  json: {\n    ...apptCtx,\n    twilioFrom,\n    twilioTo:   apptCtx.from,\n    smsBody,\n    ownerPhone: client.owner_phone || null,\n    ownerAlert,\n    clinicName: client.name,\n    isCancel:   apptCtx.intent === 'cancel'\n  }\n}];"
+        },
+        "id": "build-reply-context",
+        "name": "Build Reply Context",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1792,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.twilio.com/2010-04-01/Accounts/AC907df5d9b5370eb5dd779a5b77754374/Messages.json",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBasicAuth",
+          "sendBody": true,
+          "contentType": "form-urlencoded",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "From",
+                "value": "={{ $json.twilioFrom }}"
+              },
+              {
+                "name": "To",
+                "value": "={{ $json.twilioTo }}"
+              },
+              {
+                "name": "Body",
+                "value": "={{ $json.smsBody }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "send-ack-sms",
+        "name": "Send Acknowledgement SMS",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2016,
+          304
+        ],
+        "credentials": {
+          "httpBasicAuth": {
+            "id": "Vpy229UTG1RYrPP0",
+            "name": "Twilio Basic Auth"
+          }
+        },
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": false,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "check-is-cancel",
+                "leftValue": "={{ $('Build Reply Context').item.json.isCancel }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "is-cancel",
+        "name": "Is Cancel?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          2240,
+          304
+        ]
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointments?id=eq.{{ $('Build Reply Context').item.json.appointmentId }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "status",
+                "value": "cancelled"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "cancel-appointment",
+        "name": "Cancel Appointment",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2464,
+          192
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "PATCH",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/appointment_reminders?appointment_id=eq.{{ $('Build Reply Context').item.json.appointmentId }}&reminder_status=in.(pending,scheduled)",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Prefer",
+                "value": "return=minimal"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "reminder_status",
+                "value": "cancelled"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "cancel-reminders",
+        "name": "Cancel Pending Reminders",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2688,
+          192
+        ],
+        "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.twilio.com/2010-04-01/Accounts/AC907df5d9b5370eb5dd779a5b77754374/Messages.json",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpBasicAuth",
+          "sendBody": true,
+          "contentType": "form-urlencoded",
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "From",
+                "value": "={{ $('Build Reply Context').item.json.twilioFrom }}"
+              },
+              {
+                "name": "To",
+                "value": "={{ $('Build Reply Context').item.json.ownerPhone }}"
+              },
+              {
+                "name": "Body",
+                "value": "={{ $('Build Reply Context').item.json.ownerAlert }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "id": "alert-owner",
+        "name": "Alert Clinic Owner",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2912,
+          192
+        ],
+        "credentials": {
+          "httpBasicAuth": {
+            "id": "Vpy229UTG1RYrPP0",
+            "name": "Twilio Basic Auth"
+          }
+        },
+        "onError": "continueRegularOutput"
+      }
+    ],
+    "connections": {
+      "SMS Reply Webhook": {
+        "main": [
+          [
+            {
+              "node": "Normalize SMS",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize SMS": {
+        "main": [
+          [
+            {
+              "node": "Detect Intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Detect Intent": {
+        "main": [
+          [
+            {
+              "node": "Has Action?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has Action?": {
+        "main": [
+          [
+            {
+              "node": "Lookup Appointment",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Lookup Appointment": {
+        "main": [
+          [
+            {
+              "node": "Extract Appointment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Appointment": {
+        "main": [
+          [
+            {
+              "node": "Fetch Client Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Client Config": {
+        "main": [
+          [
+            {
+              "node": "Fetch Twilio Number",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Twilio Number": {
+        "main": [
+          [
+            {
+              "node": "Build Reply Context",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Reply Context": {
+        "main": [
+          [
+            {
+              "node": "Send Acknowledgement SMS",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Send Acknowledgement SMS": {
+        "main": [
+          [
+            {
+              "node": "Is Cancel?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Is Cancel?": {
+        "main": [
+          [
+            {
+              "node": "Cancel Appointment",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      },
+      "Cancel Appointment": {
+        "main": [
+          [
+            {
+              "node": "Cancel Pending Reminders",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Cancel Pending Reminders": {
+        "main": [
+          [
+            {
+              "node": "Alert Clinic Owner",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "Shiju Jabbar",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-03-19T06:30:03.474Z",
+        "id": 64,
+        "workflowId": "inmiGyHTCEP3a2hd",
+        "versionId": "170fa8d4-2716-49b8-8378-4389c42a9171",
+        "event": "activated",
+        "userId": "25794552-ac5e-4908-9628-702827419423"
+      }
+    ]
+  }
+}
