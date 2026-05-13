@@ -20,7 +20,7 @@ set
   owner_phone    = '+61400000001',
   owner_channel  = 'sms',
   timezone       = 'Australia/Sydney',
-  booking_link   = 'https://calendly.com/riverside-dental',
+  booking_link   = 'https://calendly.com/bizelevate-support/riverside-dental-clone',
   business_hours = '{"start": 8, "end": 18, "days": [1, 2, 3, 4, 5]}'::jsonb
 where id = 'riverside-dental';
 
