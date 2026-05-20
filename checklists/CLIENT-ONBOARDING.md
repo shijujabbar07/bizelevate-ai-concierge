@@ -79,7 +79,56 @@ Ask Claude to do this. Claude will:
 - [ ] Link custom domain: `staging.bizelevate.app`
 - [ ] Confirm staging dashboard loads and connects to preprod data
 
-### Phase 5 — Lock production (from this point on)
+### Phase 5 — Deploy booking redirect (book.bizelevate.app)
+
+**One-time infrastructure. Do once. All clients share it automatically.**
+
+The missed call SMS sends a tracking link (`book.bizelevate.app/{uuid}`) instead of a raw Calendly URL. Clicking it records `booking_link_clicked = true` in the dashboard, then redirects to the client's booking page. This works because the Supabase `book` Edge Function is already deployed — Phase 5 just puts a clean branded URL in front of it.
+
+**Step 5a — Deploy the redirect project to Vercel**
+
+- [ ] Go to [vercel.com](https://vercel.com) → Add New Project
+- [ ] Import the `ClaudeCode` GitHub repo
+- [ ] Set root directory: `book-redirect`
+- [ ] Framework Preset: **Other** (no framework)
+- [ ] Build command: *(leave empty)*
+- [ ] Output directory: *(leave empty)*
+- [ ] Click Deploy — it will deploy in seconds (just a `vercel.json`, no build needed)
+- [ ] Note the assigned `.vercel.app` URL for verification
+
+**Step 5b — Add the custom domain in Vercel**
+
+- [ ] In the new Vercel project → Settings → Domains
+- [ ] Add domain: `book.bizelevate.app`
+- [ ] Vercel will show the required DNS record — it will be a CNAME to `cname.vercel-dns.com`
+
+**Step 5c — Add DNS record in Porkbun**
+
+- [ ] Log in to [porkbun.com](https://porkbun.com) → Manage → `bizelevate.app` → DNS
+- [ ] Add record:
+  | Type | Host | Answer | TTL |
+  |------|------|--------|-----|
+  | CNAME | `book` | `cname.vercel-dns.com` | 600 |
+- [ ] Save — propagation takes 2-10 minutes
+
+**Step 5d — Verify the redirect works**
+
+- [ ] Visit `https://book.bizelevate.app/test-123` in a browser
+- [ ] Should redirect to the Supabase function (404 is fine — that means routing works, just no real UUID)
+- [ ] Confirm Vercel shows domain as active (green)
+
+**Step 5e — Update n8n tracking base URL**
+
+- [ ] Ask Claude to update the `TRACKING_BASE` constant in the n8n `BizElevate Missed Call Recovery` workflow's `Prepare Context` node from:
+  `https://gdzpgimyjgfzhnwyojmz.supabase.co/functions/v1/book`
+  to:
+  `https://book.bizelevate.app`
+
+> Only do Step 5e after Step 5d confirms the domain is live. If you update n8n before DNS propagates, booking links in SMS will 404.
+
+---
+
+### Phase 6 — Lock production (from this point on)
 
 From this point forward:
 - **No direct SQL against production** — all changes via numbered migration files

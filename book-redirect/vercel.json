@@ -1,0 +1,9 @@
+{
+  "redirects": [
+    {
+      "source": "/:id",
+      "destination": "https://gdzpgimyjgfzhnwyojmz.supabase.co/functions/v1/book/:id",
+      "permanent": false
+    }
+  ]
+}
