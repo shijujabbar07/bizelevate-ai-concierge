@@ -509,6 +509,7 @@ This rule applies across all sessions. It is not specific to any one task.
 - Practical reasoning
 - Call out poor ROI or fragility
 - Action over theory
+- Never use em dashes (--) in any output -- use a plain hyphen, comma, or rewrite the sentence instead
 
 **Time Allocation (founder-grade)**
 - Founder time = sales hours
@@ -576,13 +577,15 @@ Every `PLAYBOOK.md` file in this project has a corresponding page in the **BizEl
 | CustomerReach Respond | `notion/playbook-respond.md` | `31f2b7aa-f2e3-810b-bfa1-c6b9693c42ee` |
 | CustomerReach Answer | `notion/playbook-answer.md` | `31f2b7aa-f2e3-8143-9fec-cffad5f36a1c` |
 | CustomerReach Remind | `notion/playbook-remind.md` | `3252b7aa-f2e3-8159-8929-dffe4ead276f` |
-| Testing — Strategy | `testing/STRATEGY.md` | `3292b7aa-f2e3-81c3-9643-fffe692b024e` |
-| Testing — Test Inventory | `testing/TEST-INVENTORY.md` | `3292b7aa-f2e3-8137-a913-f4c2c9bda26a` |
-| Testing — Manual QA Checklist | `testing/MANUAL-QA-CHECKLIST.md` | `3292b7aa-f2e3-8111-a78c-c6d91db34c25` |
-| Testing — Critical Path Tests | `testing/CRITICAL-PATH-TESTS.md` | `3292b7aa-f2e3-8158-9259-d6258a275cce` |
+| Testing — Runbook | `testing/RUNBOOK.md` | `3632b7aa-f2e3-81aa-867c-eee99db76b7d` |
 | Testing — Bug Report Template | `testing/BUG-REPORT.md` | `3292b7aa-f2e3-81fd-8c28-c7ce1890ff0b` |
 | Testing — Release Readiness | `testing/RELEASE-READINESS.md` | `3292b7aa-f2e3-8148-83a8-ff46af6fdf60` |
-| OpenClaw — VPS Setup Guide | `notion/openclaw-setup.md` | `3252b7aa-f2e3-8116-a313-f022a437d1fe` |
+| GTM Strategy & Actions | `notion/gtm-strategy-actions.md` | `3602b7aa-f2e3-8182-a642-f3cce1d6d7aa` |
+| BizElevate One Pager | `notion/bizelevate-one-pager.md` | `3602b7aa-f2e3-816e-beaa-dfd1381f91c6` |
+| Respond — Onboarding SOP | `onboarding/RESPOND-ONBOARDING.md` | `3662b7aa-f2e3-813d-b62e-db6874ae8bf5` |
+| Respond — Client Input Template | `onboarding/respond-client-input.md` | `3662b7aa-f2e3-814f-9daa-d1bf4e5efbd7` |
+| Respond — Decommission SOP | `onboarding/RESPOND-DECOMMISSION.md` | `3662b7aa-f2e3-813f-bab4-d126c44c2317` |
+| Master Navigation | `docs/GUIDE.md` | `3662b7aa-f2e3-81c1-9d02-fffb20db6e16` |
 
 ### Sync Method (Full Replace)
 The Notion API cannot replace all page content in one call. Use this pattern:

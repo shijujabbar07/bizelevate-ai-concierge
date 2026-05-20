@@ -57,16 +57,17 @@ All P1 items must be checked. P2 items must be checked for full client go-live.
 
 ## Part 4: Critical Path Tests (P1)
 
-Run all 8 tests from [CRITICAL-PATH-TESTS.md](CRITICAL-PATH-TESTS.md):
+Run Mode 2 (Pre-Go-Live) from [RUNBOOK.md](RUNBOOK.md). All 9 tests must pass.
 
 - [ ] CP-01: Missed call → SMS fires within 10 seconds
 - [ ] CP-02: Reply CALL ME → callback_requested=true
-- [ ] CP-03: Appointment intake → confirmation SMS sent
-- [ ] CP-04: Reminder scheduler → SMS fires at correct time
-- [ ] CP-05: CANCEL reply → appointment cancelled + owner alerted
-- [ ] CP-06: Multi-client isolation — correct names in each SMS
-- [ ] CP-07: Invalid phone → no SMS, log written
+- [ ] CP-03: Answered call → no SMS (filter works)
+- [ ] CP-04: Appointment intake → confirmation SMS sent
+- [ ] CP-05: Invalid VAPI secret → request rejected
+- [ ] CP-06: Reminder scheduler → SMS fires at correct time
+- [ ] CP-07: CANCEL reply → appointment cancelled + owner alerted
 - [ ] CP-08: Booking link click → booking_link_clicked=true
+- [ ] CP-09: Multi-client isolation — correct names in each SMS
 
 ---
 

@@ -4,14 +4,16 @@ Operational checklists for consistent delivery.
 
 | Checklist | When to use |
 |-----------|------------|
-| [pre-deploy.md](pre-deploy.md) | Before promoting any change from dev → preprod → prod |
-| [schema-change.md](schema-change.md) | Every time a database table or column changes |
-| [auth-setup.md](auth-setup.md) | One-time — enable Google OAuth, magic link, RLS, and provision staff accounts |
-| [first-customer.md](first-customer.md) | One-time — when the first real customer is onboarded, to set up full environment separation |
+| [DEPLOY-GATES.md](DEPLOY-GATES.md) | Before promoting any change from dev → preprod → prod, and for every schema change |
+| [auth-setup.md](auth-setup.md) | Reference only — auth setup is complete (done 2026-03-09) |
+
+## Client onboarding
+
+Client onboarding checklists live in [onboarding/](../onboarding/).
 
 ## Environment strategy
 
-See `supabase/ENVIRONMENTS.md` for the full environment registry, project URLs, and migration promotion runbook.
+See [supabase/ENVIRONMENTS.md](../supabase/ENVIRONMENTS.md) for the full environment registry, project URLs, and migration promotion runbook.
 
 ## Rule of thumb
 
