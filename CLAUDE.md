@@ -559,63 +559,64 @@ Each sprint project uses a pinned **🔥 Focus Right Now** section at the top fo
 
 ---
 
-## Notion Sync (Non-Negotiable)
+## Reading Docs
 
-Every `PLAYBOOK.md` file in this project has a corresponding page in the **BizElevate Document Hub** Notion database.
+The `reading/` folder is the single source of truth for all user-facing documentation.
+Point Obsidian at `reading/` — every file you need to read is there, clearly named.
+Open `reading/INDEX.md` first.
 
-**Hard rule:** Whenever Claude creates or updates any `PLAYBOOK.md` file, it **must** also sync the full content to Notion in the same operation. The user reads playbooks from Notion — never skip this step.
+### Source Files (reading/ folder)
 
-### Notion Config
-- **MCP server:** `notion` (configured in `.mcp.json` — uses `@notionhq/notion-mcp-server`)
-- **Integration:** BizElevate Claude Code 2 (token: `ntn_` format, stored in `.mcp.json`)
-- **Database ID:** `31f2b7aa-f2e3-80c8-a158-c9ff2a5341e3` (BizElevate Document Hub)
+| File | Purpose |
+|------|---------|
+| `reading/INDEX.md` | Master index — open this first |
+| `reading/OPERATING-TRUTH.md` | Core principles, pricing, non-negotiables |
+| `reading/MASTER-NAVIGATION.md` | Architecture diagram, workflow IDs, system overview |
+| `reading/ONE-PAGER.md` | Pitch doc for prospect calls |
+| `reading/GTM-STRATEGY.md` | Go-to-market strategy and pipeline actions |
+| `reading/PLAYBOOK-RESPOND.md` | CustomerReach Respond — full product playbook |
+| `reading/PLAYBOOK-ANSWER.md` | CustomerReach Answer — full product playbook |
+| `reading/PLAYBOOK-REMIND.md` | CustomerReach Remind — full product playbook |
+| `reading/ONBOARDING-RESPOND-SOP.md` | How to activate a new client for Respond |
+| `reading/ONBOARDING-CLIENT-INPUT.md` | Input template — fill and hand to Claude |
+| `reading/ONBOARDING-DECOMMISSION.md` | How to decommission or reset a client |
+| `reading/TESTING-RUNBOOK.md` | End-to-end test procedures |
+| `reading/TESTING-RELEASE-READINESS.md` | Pre-release go/no-go checklist |
+| `reading/TESTING-BUG-REPORT.md` | Bug report template |
+| `reading/DEPLOY-GATES.md` | Must-pass gates before any production change |
+| `reading/PHONE-SETUP.md` | Three options for clinic phone number setup |
 
-### Known Page IDs
+### Notion Sync (On Demand Only)
+
+Notion sync is **not automatic**. Sync only when you need to share a doc externally
+(prospect, client, or team member who needs Notion access).
+
+**When to sync:** explicitly requested, or before sharing a link with someone outside the repo.
+**Never sync just because a file was updated** — local reading via Obsidian is the default.
+
+Sync script: `/tmp/notion-sync.js` (update file paths to `reading/` before running).
+Database ID: `31f2b7aa-f2e3-80c8-a158-c9ff2a5341e3` (BizElevate Document Hub).
+Token: read from `.mcp.local.json` under `notion` → `OPENAPI_MCP_HEADERS`.
+
+**Known Notion Page IDs** (for when sync is needed):
+
 | Document | File | Notion Page ID |
 |----------|------|----------------|
-| Operating Truth | `notion/OPERATING-TRUTH.md` | `3272b7aa-f2e3-8128-8dc1-fcbafcf1cee0` |
-| CustomerReach Respond | `notion/playbook-respond.md` | `31f2b7aa-f2e3-810b-bfa1-c6b9693c42ee` |
-| CustomerReach Answer | `notion/playbook-answer.md` | `31f2b7aa-f2e3-8143-9fec-cffad5f36a1c` |
-| CustomerReach Remind | `notion/playbook-remind.md` | `3252b7aa-f2e3-8159-8929-dffe4ead276f` |
-| Testing — Runbook | `testing/RUNBOOK.md` | `3662b7aa-f2e3-81dc-ab35-c7320897969c` |
-| Testing — Bug Report Template | `testing/BUG-REPORT.md` | `3292b7aa-f2e3-81fd-8c28-c7ce1890ff0b` |
-| Testing — Release Readiness | `testing/RELEASE-READINESS.md` | `3292b7aa-f2e3-8148-83a8-ff46af6fdf60` |
-| GTM Strategy & Actions | `notion/gtm-strategy-actions.md` | `3602b7aa-f2e3-8182-a642-f3cce1d6d7aa` |
-| BizElevate One Pager | `notion/bizelevate-one-pager.md` | `3602b7aa-f2e3-816e-beaa-dfd1381f91c6` |
-| Respond — Onboarding SOP | `onboarding/RESPOND-ONBOARDING.md` | `3662b7aa-f2e3-813d-b62e-db6874ae8bf5` |
-| Respond — Client Input Template | `onboarding/respond-client-input.md` | `3662b7aa-f2e3-814f-9daa-d1bf4e5efbd7` |
-| Respond — Decommission SOP | `onboarding/RESPOND-DECOMMISSION.md` | `3662b7aa-f2e3-813f-bab4-d126c44c2317` |
-| Master Navigation | `docs/GUIDE.md` | `3662b7aa-f2e3-81c1-9d02-fffb20db6e16` |
-
-### Sync Method (Full Replace)
-The Notion API cannot replace all page content in one call. Use this pattern:
-
-1. **Get existing blocks:** GET `/v1/blocks/{pageId}/children?page_size=100`
-2. **Delete all blocks:** DELETE `/v1/blocks/{blockId}` for each (parallel calls are fine)
-3. **Push full content:** PATCH `/v1/blocks/{pageId}/children` — up to 100 blocks per call, batch if needed
-
-Token for node calls: read from `.mcp.local.json` under `notion` → `OPENAPI_MCP_HEADERS` (`ntn_` token).
-
-**Reusable sync script:** `/tmp/notion-sync.js` — run `node /tmp/notion-sync.js` to re-sync all known pages. Add new pages to the `pages` array at the bottom.
-
-### Critical: Inline Link and Table Rendering
-**Never push markdown as raw text.** Two rules that must always be applied:
-
-1. **Inline links** — `[text](url)` must become a Notion `rich_text` object with a `link` property:
-   `{ "type": "text", "text": { "content": "link label", "link": { "url": "https://..." } } }`
-   Inline backtick code must use `annotations: { code: true }`.
-
-2. **Table rows** — convert to `bulleted_list_item` blocks. Join cells with ` → `. Parse any `[text](url)` in cells into linked rich_text. Skip separator rows (`|---|`) entirely. Never emit table rows as paragraphs or code blocks.
-
-The `parseRichText()` function in `/tmp/notion-sync.js` is the correct reference implementation for all future syncs.
-
-### Sync Rules
-1. **Create new playbook** → write the `.md` file, create a new Notion page in the Document Hub database, push full content using the sync method above
-2. **Update existing playbook** → update the `.md` file, delete all existing Notion blocks, push the full updated content
-3. **Never skip the Notion sync** — the user reads playbooks from Notion, not from the repo
-4. **Full content only** — never push a summary. The Notion page must mirror the full `.md` file.
+| Operating Truth | `reading/OPERATING-TRUTH.md` | `3272b7aa-f2e3-8128-8dc1-fcbafcf1cee0` |
+| CustomerReach Respond | `reading/PLAYBOOK-RESPOND.md` | `31f2b7aa-f2e3-810b-bfa1-c6b9693c42ee` |
+| CustomerReach Answer | `reading/PLAYBOOK-ANSWER.md` | `31f2b7aa-f2e3-8143-9fec-cffad5f36a1c` |
+| CustomerReach Remind | `reading/PLAYBOOK-REMIND.md` | `3252b7aa-f2e3-8159-8929-dffe4ead276f` |
+| Testing — Runbook | `reading/TESTING-RUNBOOK.md` | `3662b7aa-f2e3-81dc-ab35-c7320897969c` |
+| Testing — Bug Report | `reading/TESTING-BUG-REPORT.md` | `3292b7aa-f2e3-81fd-8c28-c7ce1890ff0b` |
+| Testing — Release Readiness | `reading/TESTING-RELEASE-READINESS.md` | `3292b7aa-f2e3-8148-83a8-ff46af6fdf60` |
+| GTM Strategy | `reading/GTM-STRATEGY.md` | `3602b7aa-f2e3-8182-a642-f3cce1d6d7aa` |
+| One Pager | `reading/ONE-PAGER.md` | `3602b7aa-f2e3-816e-beaa-dfd1381f91c6` |
+| Onboarding SOP | `reading/ONBOARDING-RESPOND-SOP.md` | `3662b7aa-f2e3-813d-b62e-db6874ae8bf5` |
+| Client Input Template | `reading/ONBOARDING-CLIENT-INPUT.md` | `3662b7aa-f2e3-814f-9daa-d1bf4e5efbd7` |
+| Decommission SOP | `reading/ONBOARDING-DECOMMISSION.md` | `3662b7aa-f2e3-813f-bab4-d126c44c2317` |
+| Master Navigation | `reading/MASTER-NAVIGATION.md` | `3662b7aa-f2e3-81c1-9d02-fffb20db6e16` |
 
 ---
 
-**Last Updated:** 26 Apr 2026 (v7 – Tool Roles section: Todoist for tasks, Notion for docs)
+**Last Updated:** 21 May 2026 (v8 - reading/ folder replaces Notion-sync-first approach)
 **Workspace Owner:** BizElevate
