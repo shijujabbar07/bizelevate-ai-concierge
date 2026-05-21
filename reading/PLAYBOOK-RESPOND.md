@@ -2,9 +2,9 @@
 
 **Capability:** missed_call
 **Product Name:** CustomerReach Respond
-**Status:** ACTIVE — live at Riverside Dental
+**Status:** ACTIVE — Riverside Dental + Vibi PT (fitness) live
 **Tier:** Starter ($199/mo standalone) or Core ($499/mo bundle)
-**Version:** 0.5
+**Version:** 0.6
 
 ---
 
@@ -14,7 +14,7 @@
 
 Think about the last time you called a business, no one answered, and you got silence or voicemail. Did you call back? Most people don't.
 
-For a dental clinic, a missed call that goes cold is a patient who books somewhere else. The clinic never knows it happened. There's no record. No follow-up. Just a ringing phone that nobody answered.
+For any service business - a dental clinic, a personal trainer, a physio - a missed call that goes cold is a lead who books somewhere else. The owner never knows it happened. There's no record. No follow-up. Just a ringing phone that nobody answered.
 
 This is the gap that CustomerReach Respond fills.
 
@@ -192,7 +192,7 @@ validate caller number → send SMS → log to Supabase call_logs
 
 ### SMS Reply Flow
 ```
-Patient replies CALL or CALL ME →
+Patient replies to recovery SMS →
 Twilio inbound SMS webhook fires →
 n8n SMS Reply Handler receives POST →
 detect intent → lookup most recent call_log by patient_phone →
@@ -209,7 +209,14 @@ PATCH call_log: booking_link_clicked=true →
 ```
 
 ### Trigger Mechanism
-Twilio StatusCallback fires when a call reaches `CallStatus=no-answer` or `CallStatus=busy`.
+Two paths trigger the workflow:
+
+**Direct number:** Twilio StatusCallback fires on `no-answer`, `busy`, `canceled`, `failed`.
+
+**Call forwarding (Option 2):** Forwarded call arrives at Twilio with `CallStatus=ringing`. n8n responds with TwiML voice message: *"Thanks for calling. We missed your call and will text you shortly."* Twilio hangs up and fires StatusCallback with `CallStatus=completed`. Filter accepts `completed` — rest of flow is identical.
+
+> The **"Call status changes"** field in Twilio (StatusCallback URL) must be configured. Without it, forwarding clients hear the voice message but never receive the SMS.
+
 - Configured on the Twilio phone number (not on VAPI — no AI voice used here)
 - Missed call webhook URL: `https://bizelevate1.app.n8n.cloud/webhook/missed-call`
 - SMS reply webhook URL: `https://bizelevate1.app.n8n.cloud/webhook/sms-reply`
@@ -331,7 +338,7 @@ Interaction tracking fields (written by the SMS Reply Handler + redirect Edge Fu
 
 **Booking link tracking:** The SMS includes a redirect URL (`/functions/v1/book/{callLogId}`) rather than the raw booking link. The `callLogId` is pre-generated in `Prepare Context` using `crypto.randomUUID()` and written to Supabase as the row `id` — so clicks can always be correlated back to the exact call record.
 
-> **Custom domain:** `book.bizelevate.app` is not yet configured. The tracking URL is the Supabase function URL directly. Once configured, update the `TRACKING_BASE` constant in the `Prepare Context` node and re-push the workflow.
+> **Custom domain: LIVE.** `book.bizelevate.app` deployed via Vercel redirect. SMS links are clean and branded.
 
 ---
 
@@ -488,9 +495,15 @@ Once active, configure the **Twilio number's inbound SMS webhook**:
 
 In Twilio Console → Phone Numbers → Active Numbers → select the client's number → Messaging section.
 
+**First reply only:** If `reply_received` is already true, execution stops — no duplicate auto-reply or owner alerts.
+
 **Detected intents:**
-- `CALL` or `CALL ME` (case-insensitive) → sets `reply_intent=callback`, `callback_requested=true`
-- Anything else → sets `reply_intent=other`, `reply_received=true` only
+- `CALL` or `CALL ME` (exact, case-insensitive) → `reply_intent=callback`, `callback_requested=true`
+- Anything else → `reply_intent=other`
+
+**On first reply, two things fire automatically:**
+1. Caller gets SMS: *"Thanks for your message. If you haven't booked yet, grab a time here: [booking_link] — otherwise [clientName] will follow up with you soon."*
+2. Owner gets SMS: *"Missed call reply from [callerPhone]: '[message]'. Check dashboard: dashboard.bizelevate.app"*
 
 **Matching logic:** The handler looks up the most recent `call_log` row where `patient_phone = SMS From` and `sms_sent = true`. This links the reply to the correct call record without session state.
 
@@ -504,7 +517,7 @@ No additional Twilio configuration needed. The tracking redirect is automaticall
 3. Patient taps the link → Supabase Edge Function `book` runs → sets `booking_link_clicked=true` → 302 to booking URL
 4. The call_log row was INSERTed with that same UUID — the click is correlated back automatically
 
-**Custom domain (deferred):** When `book.bizelevate.app` is configured, update `TRACKING_BASE` in the `Prepare Context` node and re-push workflow `W9lssqC5Jvd3nIVo`.
+**Custom domain: LIVE.** `book.bizelevate.app` is deployed via Vercel redirect (`book-redirect/vercel.json`). `TRACKING_BASE` updated. SMS booking links are clean and branded.
 
 ---
 
@@ -534,7 +547,7 @@ Phases map directly to product tiers. Phase 1 = Starter + Core sellable. Phase 2
 - Recovery rate + conversion tracking — dashboard funnel widget
 - Configure Twilio StatusCallback URL on demo number
 - Configure Twilio inbound SMS webhook on demo number (→ sms-reply)
-- `book.bizelevate.app` custom domain — update `TRACKING_BASE`, re-push workflow
+- [x] `book.bizelevate.app` custom domain — LIVE
 - End-to-end test: call rings out → SMS → CALL reply → callback_requested → dashboard
 
 ### Phase 2 — Growth Tier ($799/mo)
@@ -591,3 +604,4 @@ Setup fee: $500–$750 one-time. 30-day guarantee.
 | 0.4 | 2026-03-12 | Architecture hardening. Multi-client routing live via `phone_number_map`. Client config driven from `clients` table. Workflow expanded to 10 nodes. Booking link in SMS. Section 8 added: client onboarding steps. |
 | 0.5 | 2026-03-12 | SMS Reply Handler workflow added (ID: `q4CYSzFYuYfp1eWa`): detects CALL/CALL ME → sets callback_requested=true. Booking link click tracking via Supabase Edge Function `book`. callLogId pre-generated for correlation. Section 9 added. |
 | 0.6 | 2026-03-21 | Playbook restructured: sections renumbered sequentially, pricing table consolidated to single reference, duplicate system flow and demo scripts removed, "Current Status" section removed (Operating Truth owns this). |
+| 0.7 | 2026-05-21 | Call forwarding support live (Option 2 now fully working). SMS reply handler: first-reply-only guard, auto-reply with booking link, owner SMS notification. book.bizelevate.app live. Twilio "Call status changes" field documented as critical. Second client onboarded: Vibi PT (fitness industry, non-dental). |

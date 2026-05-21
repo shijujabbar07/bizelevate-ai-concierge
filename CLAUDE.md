@@ -586,16 +586,17 @@ Open `reading/INDEX.md` first.
 | `reading/DEPLOY-GATES.md` | Must-pass gates before any production change |
 | `reading/PHONE-SETUP.md` | Three options for clinic phone number setup |
 
-### Notion Sync (On Demand Only)
+### Notion (Public-Facing Docs Only)
 
-Notion sync is **not automatic**. Sync only when you need to share a doc externally
-(prospect, client, or team member who needs Notion access).
+Notion is **not** for internal or operational documents. It is only for documents that are
+shared publicly with prospects, clients, or external stakeholders.
 
-**When to sync:** explicitly requested, or before sharing a link with someone outside the repo.
-**Never sync just because a file was updated** — local reading via Obsidian is the default.
+**Sync to Notion:** ONE-PAGER.md, user guides, pitch materials — anything handed to someone outside BizElevate.
+**Do NOT sync to Notion:** Playbooks, onboarding SOPs, testing docs, GTM strategy, operating truth — these live in `reading/` only.
+**Never sync just because a file was updated** — internal docs stay local.
 
-Sync script: `/tmp/notion-sync.js` (update file paths to `reading/` before running).
-Database ID: `31f2b7aa-f2e3-80c8-a158-c9ff2a5341e3` (BizElevate Document Hub).
+If Notion sync is explicitly requested: use `/tmp/notion-sync.js` (update file paths to `reading/` before running).
+Database ID: `31f2b7aa-f2e3-80c8-a158-c9ff2a5341e3`.
 Token: read from `.mcp.local.json` under `notion` → `OPENAPI_MCP_HEADERS`.
 
 **Known Notion Page IDs** (for when sync is needed):
