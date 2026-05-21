@@ -8,55 +8,49 @@ Open this first. Find what you need in one lookup.
 
 ### Demo and Sales
 
-| What you need | Where |
-|--------------|-------|
-| Full product playbook — CustomerReach Respond (missed call SMS) | Notion: CustomerReach Respond Playbook |
-| Full product playbook — CustomerReach Answer (AI voice concierge) | Notion: CustomerReach Answer Playbook |
-| Full product playbook — CustomerReach Remind (appointment reminders) | Notion: CustomerReach Remind Playbook |
-| Pricing, tiers, positioning | Notion: Operating Truth |
-| One-page pitch doc | Notion: BizElevate One Pager |
-| Phone number setup options for clients | [docs/PHONE-ONBOARDING.md](PHONE-ONBOARDING.md) |
+| What you need | File |
+|--------------|------|
+| Full product playbook — CustomerReach Respond (missed call SMS) | [[PLAYBOOK-RESPOND]] |
+| Full product playbook — CustomerReach Answer (AI voice concierge) | [[PLAYBOOK-ANSWER]] |
+| Full product playbook — CustomerReach Remind (appointment reminders) | [[PLAYBOOK-REMIND]] |
+| Pricing, tiers, positioning | [[OPERATING-TRUTH]] |
+| One-page pitch doc | [[ONE-PAGER]] |
+| Phone number setup options for clients | [[PHONE-SETUP]] |
+| GTM strategy and pipeline actions | [[GTM-STRATEGY]] |
 
 ### Client Onboarding (CustomerReach Respond)
 
-| What you need | Where |
-|--------------|-------|
-| Step-by-step onboarding SOP | [onboarding/RESPOND-ONBOARDING.md](../onboarding/RESPOND-ONBOARDING.md) |
-| Input template (fill and hand to Claude) | [onboarding/respond-client-input.md](../onboarding/respond-client-input.md) |
-| Decommission or reset a client | [onboarding/RESPOND-DECOMMISSION.md](../onboarding/RESPOND-DECOMMISSION.md) |
+| What you need | File |
+|--------------|------|
+| Step-by-step onboarding SOP | [[ONBOARDING-RESPOND-SOP]] |
+| Input template — fill and hand to Claude | [[ONBOARDING-CLIENT-INPUT]] |
+| Decommission or reset a client | [[ONBOARDING-DECOMMISSION]] |
 
 ### Testing and QA
 
-| What you need | Where |
-|--------------|-------|
-| How to run end-to-end tests | Notion: Testing Runbook |
-| Pre-release quality gates | Notion: Testing Release Readiness |
-| Report a bug | Notion: Bug Report Template |
-| Test payload examples (JSON) | [appointment-concierge/docs/TEST-PAYLOADS.md](../appointment-concierge/docs/TEST-PAYLOADS.md) |
+| What you need | File |
+|--------------|------|
+| How to run end-to-end tests | [[TESTING-RUNBOOK]] |
+| Pre-release go/no-go checklist | [[TESTING-RELEASE-READINESS]] |
+| Report a bug | [[TESTING-BUG-REPORT]] |
+| Test payload examples (JSON) | `appointment-concierge/docs/TEST-PAYLOADS.md` |
 
 ### Application Architecture
 
-| What you need | Where |
-|--------------|-------|
-| System architecture overview (this file) | docs/GUIDE.md (below) |
-| VAPI to n8n payload contract | [appointment-concierge/docs/PAYLOAD-CONTRACT.md](../appointment-concierge/docs/PAYLOAD-CONTRACT.md) |
-| n8n workflow setup and credentials | [docs/WORKFLOW-OPS.md](WORKFLOW-OPS.md) |
-| Database environments (URLs, keys, migrations) | [supabase/ENVIRONMENTS.md](../supabase/ENVIRONMENTS.md) |
-| Casey voice prompts (VAPI) | [appointment-concierge/vapi/prompts/](../appointment-concierge/vapi/prompts/) |
+| What you need | Location |
+|--------------|----------|
+| System architecture overview | This file — see below |
+| VAPI to n8n payload contract | `appointment-concierge/docs/PAYLOAD-CONTRACT.md` |
+| n8n workflow setup and credentials | `docs/WORKFLOW-OPS.md` |
+| Database environments (URLs, keys, migrations) | `supabase/ENVIRONMENTS.md` |
+| Casey voice prompts (VAPI) | `appointment-concierge/vapi/prompts/` |
 
 ### Deployment and Operations
 
-| What you need | Where |
-|--------------|-------|
-| Promote a change to production | [checklists/DEPLOY-GATES.md](../checklists/DEPLOY-GATES.md) |
+| What you need | File |
+|--------------|------|
+| Must-pass gates before any production change | [[DEPLOY-GATES]] |
 | Weekly ops check | See below |
-
-### Strategy and GTM
-
-| What you need | Where |
-|--------------|-------|
-| Go-to-market actions | Notion: GTM Strategy and Actions |
-| Operating principles and decision rules | Notion: Operating Truth |
 
 ---
 
@@ -106,7 +100,7 @@ INBOUND CHANNELS
               │  HKHwb6mpWdvGcR070E8or   W9lssqC5Jvd3nIVo   │
               │                                             │
               │  1. Parse transcript     1. Lookup client    │
-              │  2. Classify intent         (phone_number_map│
+              │  2. Classify intent         (phone_number_map)│
               │  3. Extract patient      2. Build SMS + link  │
               │  4. Log to Supabase      3. Log to Supabase  │
               │  5. Send SMS             4. Send SMS          │
@@ -160,7 +154,7 @@ No code changes per client — config only
 
 ---
 
-## Current Status (as of 2026-05-20)
+## Current Status (as of 2026-05-21)
 
 | Item | Status |
 |------|--------|
