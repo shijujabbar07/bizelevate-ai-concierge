@@ -154,15 +154,28 @@ No code changes per client — config only
 
 ---
 
-## Current Status (as of 2026-05-21)
+## Current Status (as of 2026-05-24)
 
 | Item | Status |
 |------|--------|
-| CustomerReach Respond | Live — Riverside Dental (demo) |
+| CustomerReach Respond | Live — Riverside Dental (demo) + Vibi's Personal Training (live, May 2026) |
 | CustomerReach Answer | Live — Riverside Dental (demo) |
 | Management Dashboard | Live at dashboard.bizelevate.app |
-| Multi-client routing | Live |
+| Multi-client routing | Live — 2 clients routed (riverside-dental, vibi-pt) |
 | SMS reply capture | Live |
 | Booking link click tracking | Live |
-| First paying client | Not yet signed |
+| First paying client | Not yet signed — Vibi PT live as pilot (real calls, not yet invoiced) |
 | Dev/preprod environments | Not yet created (create on first client sign) |
+
+### Live Clients
+
+| Client | ID | Phone | Product | Since |
+|--------|----|-------|---------|-------|
+| Riverside Dental | `riverside-dental` | +61485034338 | Respond + Answer (demo) | Mar 2026 |
+| Vibi's Personal Training | `vibi-pt` | +61485048590 | Respond | May 2026 |
+
+### Recent Changes (May 2026)
+
+- Bug fixed: `Filter: Missed Calls Only` node was passing `CallStatus=completed` (answered calls) through to SMS. Removed `cond-completed` condition — only `no-answer`, `busy`, `canceled`, `failed` now route to SMS. Verified 2026-05-24.
+- Vibi PT onboarded with 5+ real missed calls handled correctly since May 19.
+- book.bizelevate.app live (Vercel redirect for booking link tracking).
