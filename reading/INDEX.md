@@ -15,39 +15,47 @@ Point Obsidian at this folder (`reading/`). Every file you need to read is here,
 
 | File | When to open it |
 |------|----------------|
-| [ONE-PAGER.md](ONE-PAGER.md) | One-page pitch — open before a prospect call |
-| [GTM-STRATEGY.md](GTM-STRATEGY.md) | Go-to-market strategy, pipeline actions, sales approach |
+| [ONE-PAGER.md](gtm/ONE-PAGER.md) | One-page pitch — open before a prospect call |
+| [GTM-STRATEGY.md](gtm/GTM-STRATEGY.md) | Go-to-market strategy, pipeline actions, sales approach |
+| [GTM-OUTREACH-AUTOMATION.md](gtm/GTM-OUTREACH-AUTOMATION.md) | Automated outreach system for a time-constrained founder — 3-layer model, email sequences, tool stack, Week 1 checklist |
 
 ## Product Playbooks (Demo Prep)
 
 | File | When to open it |
 |------|----------------|
-| [PLAYBOOK-RESPOND.md](PLAYBOOK-RESPOND.md) | CustomerReach Respond — missed call SMS. Demo script, how it works, pricing, setup options |
-| [PLAYBOOK-ANSWER.md](PLAYBOOK-ANSWER.md) | CustomerReach Answer — AI voice concierge. Casey, VAPI, appointment intake |
-| [PLAYBOOK-REMIND.md](PLAYBOOK-REMIND.md) | CustomerReach Remind — appointment reminders (Phase 2, not yet live) |
+| [PLAYBOOK-RESPOND.md](playbooks/PLAYBOOK-RESPOND.md) | CustomerReach Respond — missed call SMS. Demo script, how it works, pricing, setup options |
+| [PLAYBOOK-ANSWER.md](playbooks/PLAYBOOK-ANSWER.md) | CustomerReach Answer — AI voice concierge. Casey, VAPI, appointment intake |
+| [PLAYBOOK-REMIND.md](playbooks/PLAYBOOK-REMIND.md) | CustomerReach Remind — appointment reminders (Phase 2, not yet live) |
 
 ## Client Onboarding (CustomerReach Respond)
 
 | File | When to open it |
 |------|----------------|
-| [ONBOARDING-RESPOND-SOP.md](ONBOARDING-RESPOND-SOP.md) | The full onboarding SOP — what you do, what Claude does, in order |
-| [ONBOARDING-CLIENT-INPUT.md](ONBOARDING-CLIENT-INPUT.md) | Fill this in for each new client and paste to Claude |
-| [ONBOARDING-DECOMMISSION.md](ONBOARDING-DECOMMISSION.md) | How to reset or fully offboard a client (use this before re-testing onboarding) |
+| [ONBOARDING-RESPOND-SOP.md](onboarding/ONBOARDING-RESPOND-SOP.md) | The full onboarding SOP — what you do, what Claude does, in order |
+| [ONBOARDING-CLIENT-INPUT.md](onboarding/ONBOARDING-CLIENT-INPUT.md) | Fill this in for each new client and paste to Claude |
+| [ONBOARDING-DECOMMISSION.md](onboarding/ONBOARDING-DECOMMISSION.md) | How to reset or fully offboard a client (use this before re-testing onboarding) |
 
 ## Testing and QA
 
 | File | When to open it |
 |------|----------------|
-| [TESTING-RUNBOOK.md](TESTING-RUNBOOK.md) | Step-by-step test procedures for Respond and Answer — cURL commands included |
-| [TESTING-RELEASE-READINESS.md](TESTING-RELEASE-READINESS.md) | Go/no-go checklist before any client go-live or demo |
-| [TESTING-BUG-REPORT.md](TESTING-BUG-REPORT.md) | Template to log a bug with all required context |
+| [TESTING-RUNBOOK.md](testing/TESTING-RUNBOOK.md) | Step-by-step test procedures for Respond and Answer — cURL commands included |
+| [TESTING-RELEASE-READINESS.md](testing/TESTING-RELEASE-READINESS.md) | Go/no-go checklist before any client go-live or demo |
+| [TESTING-BUG-REPORT.md](testing/TESTING-BUG-REPORT.md) | Template to log a bug with all required context |
 
-## Operations
+## Product Ideas (On Hold)
 
 | File | When to open it |
 |------|----------------|
-| [DEPLOY-GATES.md](DEPLOY-GATES.md) | Must-pass gates before pushing any change to production or changing the schema |
-| [PHONE-SETUP.md](PHONE-SETUP.md) | Three options for clinic phone number setup — dedicated, conditional forward, or porting |
+| [PRODUCT-IDEAS.md](ideas/PRODUCT-IDEAS.md) | Ideas captured for future evaluation — each has full context, pitfalls, and prerequisites |
+
+## Operations and Checklists
+
+| File | When to open it |
+|------|----------------|
+| [DEPLOY-GATES.md](checklists/DEPLOY-GATES.md) | Must-pass gates before pushing any change to production or changing the schema |
+| [sales-call.md](checklists/sales-call.md) | Objection handling scripts for prospect calls |
+| [PHONE-SETUP.md](onboarding/PHONE-SETUP.md) | Three options for clinic phone number setup — dedicated, conditional forward, or porting |
 
 ---
 
