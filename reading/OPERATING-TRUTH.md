@@ -6,7 +6,7 @@
 
 ## What BizElevate Is
 
-AI automation for dental clinics and small service businesses. We recover missed calls, answer after-hours calls, and reduce no-shows — automatically, with zero staff effort.
+AI automation for dental clinics and small service businesses. We recover missed calls, answer after-hours calls, and reduce no-shows ;automatically, with zero staff effort.
 
 ---
 
@@ -32,7 +32,7 @@ All three write to the same Supabase database. Everything visible in the dashboa
 | Capability | Status | Notes |
 |------------|--------|-------|
 | CustomerReach Respond | **LIVE (demo)** | Riverside Dental demo number. Missed call → SMS in <10 seconds. |
-| CustomerReach Answer | **LIVE (demo)** | VAPI/Casey active on +61 485 004 338. |
+| CustomerReach Answer | **LIVE (demo)** | VAPI/Casey active on +61 485 004 338. Reception alert (owner SMS) live. Intent routing live. |
 | CustomerReach Remind | **LIVE (demo)** | Schema + n8n workflows deployed. Twilio reminder webhook pending per-client config. |
 | Management Dashboard | **LIVE** | `dashboard.bizelevate.app`. Multi-client. RLS enforced. |
 | Multi-client routing | **LIVE** | `phone_number_map` drives all workflows. Migrations 001–014 on prod. |
@@ -42,7 +42,7 @@ All three write to the same Supabase database. Everything visible in the dashboa
 ## What Is NOT Ready Yet
 
 - Business hours detection in both Respond + Answer workflows
-- Owner notification SMS (Respond + Answer)
+- Owner notification SMS (Respond only — Answer has reception alert, Respond does not yet)
 - After-hours SMS variant for Respond
 - Two-way SMS: BOOK / HOURS reply handling
 - Dashboard: callback queue view

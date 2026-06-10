@@ -2,7 +2,7 @@
 
 **Capability:** appointment_concierge
 **Product Name:** CustomerReach Answer
-**Status:** ACTIVE — live at Riverside Dental, end-to-end test pending
+**Status:** ACTIVE — live at Riverside Dental
 **Tier:** Core ($499/mo and above)
 **Version:** 2.5
 
@@ -190,8 +190,8 @@ Casey collects everything via conversation. n8n's Decision Agent extracts:
 | 10 | Write to Supabase | HTTP POST | Log to call_logs — callback path only |
 | 11 | Send Patient SMS | HTTP POST | Twilio SMS — callback confirmation SMS |
 | 12 | Write to Supabase — No Phone | HTTP POST | Log to call_logs — invalid phone path (sms_sent=false) |
-
-> **Note:** Owner summary SMS and emergency alert nodes are pending — tracked in Todoist Sprint Phase 1 Day 2.
+| 13 | Send Reception Alert SMS | HTTP POST | Twilio SMS to owner — fires on every callback intent call |
+| 14 | Send Emergency Alert SMS | HTTP POST | Twilio SMS to owner — fires immediately when urgency = emergency |
 
 ### Key Fields from VAPI End-of-Call-Report
 
@@ -372,9 +372,9 @@ Confirm:
 | Multi-client routing via phone_number_map | **PENDING** | Workflow hardcoded to riverside-dental fallback. Full multi-client routing is Day 2 sprint work. |
 | Patient SMS — callback path | **LIVE** | Fires when intent = callback_intent or booking_link is NULL |
 | Patient SMS — booking link path | **BLOCKED** | Blocked by: (1) missing Twilio credential on node, (2) clients.booking_link is NULL |
-| Owner summary SMS | **PENDING** | Day 2 sprint task |
-| Emergency owner alert | **PENDING** | Day 2 sprint task |
-| Business hours detection | **PENDING** | Day 2 sprint task |
+| Owner summary SMS (reception alert) | **LIVE** | Fires on every callback intent call |
+| Emergency owner alert | **LIVE** | Fires immediately on urgency = emergency |
+| Business hours detection | **PENDING** | Day 2 sprint task — after/during hours SMS variants |
 | End-to-end real call test (+61 485 004 338) | **BLOCKED** | Talk test cannot test SMS (no real phone number in browser). Must use real mobile. |
 | FAQ capability in VAPI prompt | **ACTIVE** | Casey answers from attached knowledge file. Fallback to callback offer if not found. |
 | 3 callback time slots in Casey prompt | **PENDING** | Day 1 sprint task |
@@ -383,16 +383,14 @@ Confirm:
 
 ---
 
-## 8. Blockers Before First Demo
+## 8. Known Gaps
 
-> All three must be resolved before a live demo is viable.
+Demo is working. Remaining open items before next client onboarding:
 
-| # | Blocker | Action | Owner |
-|---|---------|--------|-------|
-| 1 | `clients.booking_link` is NULL for riverside-dental | `UPDATE clients SET booking_link = '<calendly_url>' WHERE id = 'riverside-dental';` | Shiju |
-| 2 | `Send Booking Link SMS` n8n node has no Twilio credential | n8n UI → open node → add HTTP Basic Auth credential (Twilio SID + Token) → save | Shiju |
-| 3 | VAPI model is Groq llama-3.1-8b (poor adherence) | VAPI Dashboard → Model → switch to GPT-4o mini cluster | Shiju |
-| 4 | Prompt v2.5 not yet deployed to VAPI Dashboard | Copy `casey-v2-intake-only.md` → paste into VAPI system prompt | Shiju |
+| # | Item | Action |
+|---|------|--------|
+| 1 | Business hours detection | Day 2 sprint — during/after hours SMS variants in both Answer + Respond |
+| 2 | Consolidate to single Twilio number per client | Tracked in Sprint Phase 1 (tech debt) — do before next client onboarding |
 
 > **Note on Talk test:** The VAPI browser Talk test cannot test the SMS flow — it has no real phone number so `{{customer.number}}` is empty and the phone validation step fails. Always test SMS with a real inbound call to `+61 485 004 338`.
 
@@ -422,7 +420,7 @@ Full pricing with all tier details: [BizElevate Operating Truth](https://www.not
 | **Growth** | Core + Remind + Review | $799/mo |
 | **Practice** | Growth + Recall + Multi-location | $1,299/mo |
 
-Setup fee: $500–$750 one-time. 30-day guarantee: full refund if no measurable improvement in after-hours call handling.
+Setup fee: $1,500 minimum (pilot rate). $2,500 from client 2 onward. 30-day guarantee.
 
 ---
 
@@ -437,3 +435,4 @@ Setup fee: $500–$750 one-time. 30-day guarantee: full refund if no measurable 
 | 2.3 | 2026-03-29 | Booking intent flow added. Casey detects booking vs callback intent during call. Post-call: n8n fetches clients.booking_link and routes to booking link SMS or callback SMS based on intent. Decision Agent updated to extract intent field. Three new n8n nodes added: Fetch Client Config, Route by Intent, Send Booking Link SMS. FAQ behaviour corrected: Casey now attempts to answer general questions from attached knowledge file before offering callback. |
 | 2.4 | 2026-03-29 | QA fixes from first Talk test. Mobile number: removed "8 digits after 04" framing — Casey now accepts full 10-digit number and confirms in 4-3-3 groups. Added explicit rule: do not re-ask for information already given in the call. Added call-ending rule: end immediately after closing script, no looping. |
 | 2.5 | 2026-03-30 | Prompt restructure based on second Talk test QA. (1) Section 5 removed — reason for visit now collected once in Section 5.3 during intake. (2) Collection order changed: Name → Mobile → Reason → Preferred Time. (3) Preferred time skipped entirely for booking_intent — Casey says "we'll send you a booking link" instead of asking when they want to come in. "next Tuesday" example removed. (4) Confirmation summary is now conditional: booking_intent shows Name + Mobile + Reason only; callback_intent shows all four fields. (5) Caller ID guard added: Casey validates {{customer.number}} before using it — skips to voice entry if empty or not a valid AU mobile. Root cause analysis: booking link SMS not received due to (a) Talk test has no real phone number — use real call to test, (b) clients.booking_link is NULL for riverside-dental — must be set in Supabase, (c) Send Booking Link SMS n8n node has no Twilio credential configured — must be added via n8n UI. |
+| 2.6 | 2026-06-11 | Reception alert (owner SMS on every callback intent call) shipped. Emergency owner alert shipped. Intent routing improvements. Casey loop fix. booking_link populated for Riverside Dental (live Calendly URL). Build status and blockers section updated to reflect live state. Setup fee corrected to $1,500 minimum. |
