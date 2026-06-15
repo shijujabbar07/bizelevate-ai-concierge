@@ -75,7 +75,7 @@
 ╚══════════════════════════════════════════════════════════════════════════════╝
 -->
 
-# Casey — Intake + Booking Intent Agent (v2.6)
+# Casey — Intake + Booking Intent Agent (v2.7)
 
 > **This is the active prompt for CustomerReach Answer.**
 > Casey collects appointment request details and detects whether the patient wants to self-serve via a booking link or prefers a callback.
