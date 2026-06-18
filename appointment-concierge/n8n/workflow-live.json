@@ -1,5 +1,5 @@
 ﻿{
-    "updatedAt":  "2026-06-17T07:57:30.206Z",
+    "updatedAt":  "2026-06-18T06:55:14.730Z",
     "createdAt":  "2026-02-12T08:59:31.281Z",
     "id":  "HKHwb6mpWdvGcR070E8or",
     "name":  "BizElevate - Appointment Request Concierge (MCP)",
@@ -405,10 +405,10 @@
                   {
                       "parameters":  {
                                          "promptType":  "define",
-                                         "text":  "=Analyze this VAPI webhook event and decide how to process it.\n\n**Event Data:**\n- Event Type: {{ $json.eventType }}\n- Call ID: {{ $json.callId }}\n- Patient Name: {{ $json.patientName || \u0027Not provided\u0027 }}\n- Patient Phone: {{ $json.patientPhone || $json.customerPhone || \u0027Not provided\u0027 }}\n- Requested DateTime: {{ $json.requestedDateTime || \u0027Not provided\u0027 }}\n- Reason: {{ $json.reason || \u0027Not provided\u0027 }}\n- Customer Phone (caller ID): {{ $json.customerPhone }}\n- Timestamp: {{ $json.timestamp }}\n\n**Call Transcript:**\n{{ $json.transcript || \u0027No transcript available\u0027 }}\n\nIf any patient fields above show \u0027Not provided\u0027, extract the correct values from the transcript before returning your decision.",
+                                         "text":  "=Extract appointment data from this call.\n\nCall ID: {{ $json.callId }}\nCustomer Phone (caller ID): {{ $json.customerPhone }}\nTimestamp: {{ $json.timestamp }}\n\nTranscript:\n{{ $json.transcript || \u0027No transcript available\u0027 }}\n\nReturn the JSON decision object.",
                                          "hasOutputParser":  true,
                                          "options":  {
-                                                         "systemMessage":  "You are the BizElevate Appointment Concierge Agent. Analyze VAPI webhook events and return structured decisions.\n\n## Your Task\nAnalyze the event and return a JSON decision object.\n\n## Decision Rules\n\n### For eventType = \"end-of-call-report\"\n1. Determine the action: \"process_appointment\"\n2. Extract patient data from structured fields first, then transcript if missing\n3. Classify urgency:\n   - \"emergency\": chest pain, difficulty breathing, severe bleeding, stroke symptoms, loss of consciousness\n   - \"urgent\": fever, infection, moderate pain, worsening symptoms, same-day needs\n   - \"routine\": check-ups, follow-ups, vaccinations, preventive care, general appointments\n4. Classify intent from transcript:\n   - \"booking_intent\": caller asked to book online, transcript shows Casey offering a booking link\n   - \"callback_intent\": caller wanted a callback\n   - Default to \"callback_intent\" if unclear\n\n### For any other eventType\nReturn action: \"acknowledge_only\"\n\n## Response Format\nAlways return valid JSON with these exact fields:\n{\n  \"action\": \"process_appointment\" or \"acknowledge_only\",\n  \"eventType\": \"string\",\n  \"callId\": \"string\",\n  \"patientName\": \"string\",\n  \"patientPhone\": \"string\",\n  \"patientFirstName\": \"string\",\n  \"requestedDateTime\": \"string\",\n  \"reason\": \"string\",\n  \"urgency\": \"routine|urgent|emergency\",\n  \"intent\": \"booking_intent|callback_intent\",\n  \"timestamp\": \"string\",\n  \"message\": \"string\"\n}"
+                                                         "systemMessage":  "You are a transcript analyzer for Casey, an AI dental receptionist. Extract structured data from the call transcript and return ONLY valid JSON — no other text.\n\n## Intent detection (DETERMINISTIC — check transcript closing statement first)\n- Closing contains \"booking link\"                       → intent = \"booking_intent\"\n- Closing contains \"call you on that number within\"     → intent = \"callback_intent\"\n- Closing contains \"someone will call you\"              → intent = \"callback_intent\"\n- Default when unclear                                  → intent = \"callback_intent\"\n\n## Data extraction — Casey\u0027s closing is the primary source\nCasey always closes with: \"Just to confirm — [Name], on [number], for [reason]...\"\n- patientPhone      : number from the closing. Strip spaces. Fallback: number from \"I have your number as [X]\".\n- patientName       : name immediately after \"Just to confirm —\". Fallback: patient\u0027s answer to \"could I get your name\".\n- patientFirstName  : first word of patientName.\n- reason            : text after \"for\" in the closing. Summarise briefly.\n- requestedDateTime : \"preferred time [X]\" from closing, or any day/time the patient stated. Default \"To be confirmed\".\n- urgency           : \"emergency\" = severe pain/bleeding/swelling/can\u0027t eat; \"urgent\" = moderate pain/discomfort; \"routine\" = check-up/clean/general.\n\n## Response — return ONLY this JSON, no other text\n{\n  \"action\": \"process_appointment\",\n  \"eventType\": \"end-of-call-report\",\n  \"callId\": \"[call ID from input]\",\n  \"patientName\": \"[full name]\",\n  \"patientFirstName\": \"[first name only]\",\n  \"patientPhone\": \"[phone as confirmed in call — leading 0 or +61, no spaces]\",\n  \"requestedDateTime\": \"[preferred time, or To be confirmed]\",\n  \"reason\": \"[reason for visit]\",\n  \"urgency\": \"[routine | urgent | emergency]\",\n  \"intent\": \"[booking_intent | callback_intent]\",\n  \"timestamp\": \"[timestamp from input]\",\n  \"message\": \"Appointment request processed\"\n}"
                                                      }
                                      },
                       "id":  "decision-agent",
@@ -422,24 +422,24 @@
                   },
                   {
                       "parameters":  {
-                                         "model":  "gpt-4o-mini",
+                                         "model":  "claude-haiku-4-5-20251001",
                                          "options":  {
-                                                         "temperature":  0.1
+
                                                      }
                                      },
                       "id":  "openai-model",
-                      "name":  "OpenAI Chat Model",
-                      "type":  "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+                      "name":  "Claude Haiku",
+                      "type":  "@n8n/n8n-nodes-langchain.lmChatAnthropic",
                       "typeVersion":  1,
                       "position":  [
                                        904,
                                        756
                                    ],
                       "credentials":  {
-                                          "openAiApi":  {
-                                                            "id":  "0WYhIRpuxxCXNvs3",
-                                                            "name":  "OpenAi account"
-                                                        }
+                                          "anthropicApi":  {
+                                                               "id":  "j0Ke3yOiMW7FTVnF",
+                                                               "name":  "Anthropic account"
+                                                           }
                                       }
                   },
                   {
@@ -1347,17 +1347,6 @@
                                                                  ]
                                                              ]
                                                 },
-                        "OpenAI Chat Model":  {
-                                                  "ai_languageModel":  [
-                                                                           [
-                                                                               {
-                                                                                   "node":  "Decision Agent",
-                                                                                   "type":  "ai_languageModel",
-                                                                                   "index":  0
-                                                                               }
-                                                                           ]
-                                                                       ]
-                                              },
                         "Structured Output Parser":  {
                                                          "ai_outputParser":  [
                                                                                  [
@@ -1384,7 +1373,7 @@
                                                   "main":  [
                                                                [
                                                                    {
-                                                                       "node":  "Save to Google Sheets",
+                                                                       "node":  "Phone Valid?",
                                                                        "type":  "main",
                                                                        "index":  0
                                                                    }
@@ -1401,11 +1390,7 @@
                         "Save to Google Sheets":  {
                                                       "main":  [
                                                                    [
-                                                                       {
-                                                                           "node":  "Phone Valid?",
-                                                                           "type":  "main",
-                                                                           "index":  0
-                                                                       }
+
                                                                    ]
                                                                ]
                                                   },
@@ -1565,7 +1550,18 @@
                                                                                  }
                                                                              ]
                                                                          ]
-                                                            }
+                                                            },
+                        "Claude Haiku":  {
+                                             "ai_languageModel":  [
+                                                                      [
+                                                                          {
+                                                                              "node":  "Decision Agent",
+                                                                              "type":  "ai_languageModel",
+                                                                              "index":  0
+                                                                          }
+                                                                      ]
+                                                                  ]
+                                         }
                     },
     "settings":  {
                      "executionOrder":  "v1",
@@ -4765,9 +4761,9 @@
                                          }
                                      ]
                 },
-    "versionId":  "87622ac7-40ce-43fb-9f43-829d910af1b0",
-    "activeVersionId":  "87622ac7-40ce-43fb-9f43-829d910af1b0",
-    "versionCounter":  129,
+    "versionId":  "104b2877-5ad5-46f0-a5ce-e2340aa17252",
+    "activeVersionId":  "104b2877-5ad5-46f0-a5ce-e2340aa17252",
+    "versionCounter":  130,
     "triggerCount":  1,
     "sourceWorkflowId":  null,
     "shared":  [
@@ -4813,9 +4809,9 @@
                  }
              ],
     "activeVersion":  {
-                          "updatedAt":  "2026-06-17T07:57:30.210Z",
-                          "createdAt":  "2026-06-17T07:57:30.210Z",
-                          "versionId":  "87622ac7-40ce-43fb-9f43-829d910af1b0",
+                          "updatedAt":  "2026-06-18T06:55:14.733Z",
+                          "createdAt":  "2026-06-18T06:55:14.733Z",
+                          "versionId":  "104b2877-5ad5-46f0-a5ce-e2340aa17252",
                           "workflowId":  "HKHwb6mpWdvGcR070E8or",
                           "nodes":  [
                                         {
@@ -5216,10 +5212,10 @@
                                         {
                                             "parameters":  {
                                                                "promptType":  "define",
-                                                               "text":  "=Analyze this VAPI webhook event and decide how to process it.\n\n**Event Data:**\n- Event Type: {{ $json.eventType }}\n- Call ID: {{ $json.callId }}\n- Patient Name: {{ $json.patientName || \u0027Not provided\u0027 }}\n- Patient Phone: {{ $json.patientPhone || $json.customerPhone || \u0027Not provided\u0027 }}\n- Requested DateTime: {{ $json.requestedDateTime || \u0027Not provided\u0027 }}\n- Reason: {{ $json.reason || \u0027Not provided\u0027 }}\n- Customer Phone (caller ID): {{ $json.customerPhone }}\n- Timestamp: {{ $json.timestamp }}\n\n**Call Transcript:**\n{{ $json.transcript || \u0027No transcript available\u0027 }}\n\nIf any patient fields above show \u0027Not provided\u0027, extract the correct values from the transcript before returning your decision.",
+                                                               "text":  "=Extract appointment data from this call.\n\nCall ID: {{ $json.callId }}\nCustomer Phone (caller ID): {{ $json.customerPhone }}\nTimestamp: {{ $json.timestamp }}\n\nTranscript:\n{{ $json.transcript || \u0027No transcript available\u0027 }}\n\nReturn the JSON decision object.",
                                                                "hasOutputParser":  true,
                                                                "options":  {
-                                                                               "systemMessage":  "You are the BizElevate Appointment Concierge Agent. Analyze VAPI webhook events and return structured decisions.\n\n## Your Task\nAnalyze the event and return a JSON decision object.\n\n## Decision Rules\n\n### For eventType = \"end-of-call-report\"\n1. Determine the action: \"process_appointment\"\n2. Extract patient data from structured fields first, then transcript if missing\n3. Classify urgency:\n   - \"emergency\": chest pain, difficulty breathing, severe bleeding, stroke symptoms, loss of consciousness\n   - \"urgent\": fever, infection, moderate pain, worsening symptoms, same-day needs\n   - \"routine\": check-ups, follow-ups, vaccinations, preventive care, general appointments\n4. Classify intent from transcript:\n   - \"booking_intent\": caller asked to book online, transcript shows Casey offering a booking link\n   - \"callback_intent\": caller wanted a callback\n   - Default to \"callback_intent\" if unclear\n\n### For any other eventType\nReturn action: \"acknowledge_only\"\n\n## Response Format\nAlways return valid JSON with these exact fields:\n{\n  \"action\": \"process_appointment\" or \"acknowledge_only\",\n  \"eventType\": \"string\",\n  \"callId\": \"string\",\n  \"patientName\": \"string\",\n  \"patientPhone\": \"string\",\n  \"patientFirstName\": \"string\",\n  \"requestedDateTime\": \"string\",\n  \"reason\": \"string\",\n  \"urgency\": \"routine|urgent|emergency\",\n  \"intent\": \"booking_intent|callback_intent\",\n  \"timestamp\": \"string\",\n  \"message\": \"string\"\n}"
+                                                                               "systemMessage":  "You are a transcript analyzer for Casey, an AI dental receptionist. Extract structured data from the call transcript and return ONLY valid JSON — no other text.\n\n## Intent detection (DETERMINISTIC — check transcript closing statement first)\n- Closing contains \"booking link\"                       → intent = \"booking_intent\"\n- Closing contains \"call you on that number within\"     → intent = \"callback_intent\"\n- Closing contains \"someone will call you\"              → intent = \"callback_intent\"\n- Default when unclear                                  → intent = \"callback_intent\"\n\n## Data extraction — Casey\u0027s closing is the primary source\nCasey always closes with: \"Just to confirm — [Name], on [number], for [reason]...\"\n- patientPhone      : number from the closing. Strip spaces. Fallback: number from \"I have your number as [X]\".\n- patientName       : name immediately after \"Just to confirm —\". Fallback: patient\u0027s answer to \"could I get your name\".\n- patientFirstName  : first word of patientName.\n- reason            : text after \"for\" in the closing. Summarise briefly.\n- requestedDateTime : \"preferred time [X]\" from closing, or any day/time the patient stated. Default \"To be confirmed\".\n- urgency           : \"emergency\" = severe pain/bleeding/swelling/can\u0027t eat; \"urgent\" = moderate pain/discomfort; \"routine\" = check-up/clean/general.\n\n## Response — return ONLY this JSON, no other text\n{\n  \"action\": \"process_appointment\",\n  \"eventType\": \"end-of-call-report\",\n  \"callId\": \"[call ID from input]\",\n  \"patientName\": \"[full name]\",\n  \"patientFirstName\": \"[first name only]\",\n  \"patientPhone\": \"[phone as confirmed in call — leading 0 or +61, no spaces]\",\n  \"requestedDateTime\": \"[preferred time, or To be confirmed]\",\n  \"reason\": \"[reason for visit]\",\n  \"urgency\": \"[routine | urgent | emergency]\",\n  \"intent\": \"[booking_intent | callback_intent]\",\n  \"timestamp\": \"[timestamp from input]\",\n  \"message\": \"Appointment request processed\"\n}"
                                                                            }
                                                            },
                                             "id":  "decision-agent",
@@ -5233,24 +5229,24 @@
                                         },
                                         {
                                             "parameters":  {
-                                                               "model":  "gpt-4o-mini",
+                                                               "model":  "claude-haiku-4-5-20251001",
                                                                "options":  {
-                                                                               "temperature":  0.1
+
                                                                            }
                                                            },
                                             "id":  "openai-model",
-                                            "name":  "OpenAI Chat Model",
-                                            "type":  "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+                                            "name":  "Claude Haiku",
+                                            "type":  "@n8n/n8n-nodes-langchain.lmChatAnthropic",
                                             "typeVersion":  1,
                                             "position":  [
                                                              904,
                                                              756
                                                          ],
                                             "credentials":  {
-                                                                "openAiApi":  {
-                                                                                  "id":  "0WYhIRpuxxCXNvs3",
-                                                                                  "name":  "OpenAi account"
-                                                                              }
+                                                                "anthropicApi":  {
+                                                                                     "id":  "j0Ke3yOiMW7FTVnF",
+                                                                                     "name":  "Anthropic account"
+                                                                                 }
                                                             }
                                         },
                                         {
@@ -6158,17 +6154,6 @@
                                                                                        ]
                                                                                    ]
                                                                       },
-                                              "OpenAI Chat Model":  {
-                                                                        "ai_languageModel":  [
-                                                                                                 [
-                                                                                                     {
-                                                                                                         "node":  "Decision Agent",
-                                                                                                         "type":  "ai_languageModel",
-                                                                                                         "index":  0
-                                                                                                     }
-                                                                                                 ]
-                                                                                             ]
-                                                                    },
                                               "Structured Output Parser":  {
                                                                                "ai_outputParser":  [
                                                                                                        [
@@ -6195,7 +6180,7 @@
                                                                         "main":  [
                                                                                      [
                                                                                          {
-                                                                                             "node":  "Save to Google Sheets",
+                                                                                             "node":  "Phone Valid?",
                                                                                              "type":  "main",
                                                                                              "index":  0
                                                                                          }
@@ -6212,11 +6197,7 @@
                                               "Save to Google Sheets":  {
                                                                             "main":  [
                                                                                          [
-                                                                                             {
-                                                                                                 "node":  "Phone Valid?",
-                                                                                                 "type":  "main",
-                                                                                                 "index":  0
-                                                                                             }
+
                                                                                          ]
                                                                                      ]
                                                                         },
@@ -6376,7 +6357,18 @@
                                                                                                        }
                                                                                                    ]
                                                                                                ]
-                                                                                  }
+                                                                                  },
+                                              "Claude Haiku":  {
+                                                                   "ai_languageModel":  [
+                                                                                            [
+                                                                                                {
+                                                                                                    "node":  "Decision Agent",
+                                                                                                    "type":  "ai_languageModel",
+                                                                                                    "index":  0
+                                                                                                }
+                                                                                            ]
+                                                                                        ]
+                                                               }
                                           },
                           "nodeGroups":  [
 
@@ -6387,18 +6379,18 @@
                           "autosaved":  false,
                           "workflowPublishHistory":  [
                                                          {
-                                                             "createdAt":  "2026-06-17T07:57:30.574Z",
-                                                             "id":  144,
+                                                             "createdAt":  "2026-06-18T06:55:14.980Z",
+                                                             "id":  146,
                                                              "workflowId":  "HKHwb6mpWdvGcR070E8or",
-                                                             "versionId":  "87622ac7-40ce-43fb-9f43-829d910af1b0",
+                                                             "versionId":  "104b2877-5ad5-46f0-a5ce-e2340aa17252",
                                                              "event":  "activated",
                                                              "userId":  "25794552-ac5e-4908-9628-702827419423"
                                                          },
                                                          {
-                                                             "createdAt":  "2026-06-17T07:57:30.475Z",
-                                                             "id":  143,
+                                                             "createdAt":  "2026-06-18T06:55:14.902Z",
+                                                             "id":  145,
                                                              "workflowId":  "HKHwb6mpWdvGcR070E8or",
-                                                             "versionId":  "87622ac7-40ce-43fb-9f43-829d910af1b0",
+                                                             "versionId":  "104b2877-5ad5-46f0-a5ce-e2340aa17252",
                                                              "event":  "deactivated",
                                                              "userId":  "25794552-ac5e-4908-9628-702827419423"
                                                          }
