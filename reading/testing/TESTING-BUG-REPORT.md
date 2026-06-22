@@ -101,7 +101,7 @@ Which test case (from TEST-INVENTORY.md or CRITICAL-PATH-TESTS.md) confirms the 
 
 ---
 
-# Known Active Bugs (as of 2026-03-21)
+# Known Active Bugs (as of 2026-06-22)
 
 | ID | Severity | Summary | Status |
 |----|----------|---------|--------|
@@ -110,3 +110,6 @@ Which test case (from TEST-INVENTORY.md or CRITICAL-PATH-TESTS.md) confirms the 
 | BUG-003 | P2 | Booking link uses raw Supabase URL (looks like spam) — `book.bizelevate.app` not configured | Open |
 | BUG-004 | P2 | No business hours detection — Respond SMS fires at 3am | Open |
 | BUG-005 | P2 | Same Twilio number can only set one inbound SMS webhook (sms-reply vs reminder-sms-reply conflict when both capabilities active) | Open |
+| BUG-006 | P1 | Casey (VAPI) re-asks for name and reason already given earlier in the same call, plus a hallucinated non-sequitur line ("welcome to the show"). Live VAPI "First Message" field still asks "Can I get your name please?" (leaked from the abandoned v3.1 draft) while the deployed system prompt is v2.8, which expects its own combined "How can I help you today?" opener — the mismatch confuses the model's turn-tracking. | Open |
+| BUG-007 | P2 | Casey promises "We'll send you a booking link by text shortly" but the patient SMS that actually sends is the generic callback message with no link. Root cause: `clients.online_booking_enabled = false` for `riverside-dental` even though `booking_link` is a live Calendly URL — `Route by Intent` requires both fields, so it always falls back to `Send Patient SMS`. | Open |
+| BUG-008 | P1 | Reception/owner alert SMS delivery is unverifiable. `Send Reception Alert` (n8n) has `onError: continueRegularOutput`, so a failed Twilio call is silently swallowed. `call_logs.owner_notified` is hardcoded `false` on insert (`Write Floor Record`) and never updated to `true` after the alert actually sends — there is no way to confirm from logs/dashboard whether a clinic ever received its alert. | Open |

@@ -2,8 +2,15 @@
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  CASEY — VAPI SYSTEM PROMPT                                                 ║
 ║  Version:     v3.1 — Rapid Intake (sub-60-second)                          ║
-║  Status:      ACTIVE                                                        ║
+║  Status:      DRAFT — NOT DEPLOYED                                          ║
 ╠══════════════════════════════════════════════════════════════════════════════╣
+║  BUG-006 (2026-06-22): this file's First Message text ("Can I get your     ║
+║  name please?") was found live in VAPI while the deployed system prompt    ║
+║  body is actually v2.9 (casey-v2-intake-only.md), which expects its own    ║
+║  combined opener instead. That mismatch caused Casey to ask for the        ║
+║  caller's name twice. Do not paste this file's First Message into VAPI     ║
+║  unless this whole file becomes the deployed system prompt too.            ║
+║                                                                              ║
 ║  FIRST MESSAGE (set separately in VAPI — do not repeat in this prompt):    ║
 ║  "Thanks for calling Riverside Dental — I'm Casey, an AI assistant.        ║
 ║   Can I get your name please?"                                              ║
