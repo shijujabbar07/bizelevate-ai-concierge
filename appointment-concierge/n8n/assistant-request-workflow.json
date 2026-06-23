@@ -1,1 +1,555 @@
-{"updatedAt":"2026-05-15T06:22:47.909Z","createdAt":"2026-05-14T08:54:53.204Z","id":"RlxRvGgtWcSh1ZQp","name":"BizElevate VAPI Assistant Request Handler","description":null,"active":true,"isArchived":false,"nodes":[{"id":"node1","name":"VAPI Assistant Request","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[240,300],"parameters":{"path":"vapi-assistant-request","httpMethod":"POST","responseMode":"responseNode","options":{}},"webhookId":"b114d321-8e2b-444e-a5eb-f10db4ebedfc"},{"id":"node2","name":"Extract Called Number","type":"n8n-nodes-base.code","typeVersion":2,"position":[460,300],"parameters":{"jsCode":"const body = $input.first().json.body || $input.first().json;\nconst message = body.message || body;\nconst calledNumber = message.phoneNumber?.number || '';\nconst callerNumber = message.call?.customer?.number || '';\nconst callId = message.call?.id || '';\nreturn [{ json: { calledNumber, callerNumber, callId } }];"}},{"id":"node3","name":"Lookup Client","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[680,300],"parameters":{"method":"GET","url":"=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/phone_number_map?select=client_id,capability&phone_number=eq.{{ encodeURIComponent($('Extract Called Number').item.json.calledNumber) }}","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"},{"name":"Authorization","value":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"}]},"options":{}}},{"id":"node4","name":"Client Found?","type":"n8n-nodes-base.if","typeVersion":2,"position":[900,300],"parameters":{"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"strict"},"conditions":[{"id":"c1","leftValue":"={{ Array.isArray($json) && $json.length > 0 }}","rightValue":true,"operator":{"type":"boolean","operation":"equals"}}],"combinator":"and"}}},{"id":"node5","name":"Fetch Client Config","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[1120,180],"parameters":{"method":"GET","url":"=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/clients?select=id,name,agent_name,voice_id,business_hours,booking_link,owner_phone&id=eq.{{ encodeURIComponent($('Lookup Client').item.json[0]?.client_id || '') }}","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"},{"name":"Authorization","value":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"}]},"options":{}}},{"id":"node6","name":"Build Assistant Config","type":"n8n-nodes-base.code","typeVersion":2,"position":[1340,180],"parameters":{"jsCode":"const rows = $('Fetch Client Config').first().json;\nconst client = Array.isArray(rows) ? rows[0] : rows;\n\nconst clinicName = client?.name || 'Riverside Dental';\nconst agentName = client?.agent_name || 'Casey';\nconst voiceId = client?.voice_id || '21m00Tcm4TlvDq8ikWAM';\n\nlet clinicHours = 'Monday to Friday, 8am to 5pm';\nif (client?.business_hours) {\n  const bh = typeof client.business_hours === 'string'\n    ? JSON.parse(client.business_hours) : client.business_hours;\n  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];\n  const days = (bh.days || [1,2,3,4,5]).map(d => dayNames[d]).join(', ');\n  const fmt = h => h < 12 ? h + 'am' : h === 12 ? '12pm' : (h-12) + 'pm';\n  clinicHours = days + ', ' + fmt(bh.start || 8) + ' to ' + fmt(bh.end || 17);\n}\n\nconst PROMPT = \"# Casey — Rapid Intake Agent (v3.1)\\n\\nYou are Casey, an AI voice assistant for Riverside Dental.\\n\\nThe caller has already heard your introduction and been asked for their name. Pick up from there.\\n\\nYour only job: confirm the name, confirm a callback number, get the reason — then close. Under 60 seconds total.\\n\\n---\\n\\n## Core Rules\\n\\n- **Maximum 2 sentences per turn.** Never longer.\\n- **\\\"yes\\\", \\\"yeah\\\", \\\"yep\\\", \\\"correct\\\", \\\"that's right\\\", \\\"uh huh\\\", \\\"mm-hmm\\\", \\\"sure\\\"** = confirmed. Move on immediately. Do not re-ask.\\n- **Never repeat a question more than once.**\\n- **No filler openers.** Do not say \\\"Great!\\\", \\\"Absolutely!\\\", \\\"Of course!\\\", \\\"Certainly!\\\".\\n- **No end summary.** Do not read all details back before closing.\\n- **End the call immediately** after the closing line.\\n\\n---\\n\\n## Step 1 — Confirm Name\\n\\nThe caller is responding to \\\"Can I get your name please?\\\"\\n\\nRepeat the **first name only** back once:\\n\\n> \\\"Thanks — just to confirm, that's [First Name]?\\\"\\n\\nIf yes → move to Step 2.\\nIf correction → accept it and move on. Do not ask again.\\n\\nUse **first name only** for all subsequent address.\\n\\n---\\n\\n## Step 2 — Callback Number\\n\\n`{{customer.number}}` is the number the caller is calling from.\\n\\n**Convert to Australian local format before using:**\\nIf `{{customer.number}}` starts with `+61`, replace `+61` with `0`.\\nExample: `+61433664338` → `0433664338`\\n\\n**Validate:** a valid Australian mobile starts with `04` and is exactly 10 digits.\\n\\n**If valid after conversion:**\\n> \\\"Is [converted number] the best number for us to call you back on?\\\"\\n\\nRead the number in groups of 4-3-3, saying \\\"oh\\\" for the digit 0.\\nExample: `0433664338` → \\\"oh-four-three-three, six-six-four, three-three-eight\\\"\\n\\n- Yes → confirmed, go to Step 3.\\n- No → ask once: \\\"What's the best number?\\\" → read it back once in groups of 4-3-3 → confirmed, go to Step 3.\\n\\n**If invalid or empty:**\\n> \\\"What's the best mobile number for us to reach you on?\\\"\\n\\nRead it back once in groups of 4-3-3. Confirmed → go to Step 3.\\n\\n---\\n\\n## Step 3 — Reason\\n\\n> \\\"And briefly — what's the reason for your call today?\\\"\\n\\nAccept any answer. Do not probe or ask follow-ups.\\n\\n---\\n\\n## Step 4 — Close\\n\\nImmediately after the reason is given:\\n\\n> \\\"Perfect — we've got your details [First Name]. The team will be in touch shortly. Have a great day.\\\"\\n\\nEnd the call immediately. Do not add anything after this line.\\n\\n---\\n\\n## General Questions (FAQ)\\n\\nIf the caller asks a general question — hours, services, fees, health funds, parking, preparation, aftercare — **answer from the knowledge base file first** before doing anything else.\\n\\nRules:\\n- If the answer is in the knowledge base: answer it in 1–2 sentences, then ask if there is anything else or offer to take their details.\\n- If the answer is not in the knowledge base: say \\\"That's something the team can answer when they call you back\\\" — do not guess or invent information.\\n- Never say \\\"someone will call you\\\" for a question that has a clear answer in the knowledge base.\\n\\nAfter answering a general question, if the caller has no other queries, offer to take their details for a callback or booking — then proceed through Steps 1–4 as normal.\\n\\n---\\n\\n## Emergency Exception\\n\\nIf the caller mentions severe pain, inability to breathe, or a medical emergency:\\n\\n> \\\"Please call 000 immediately or go to your nearest emergency department.\\\"\\n\\nEnd the call.\";\n\nconst systemPrompt = PROMPT\n  .replace(/Riverside Dental/g, clinicName)\n  .replace(/Casey/g, agentName)\n  .replace(/Monday to Friday, 8am to 5pm/g, clinicHours);\n\nreturn [{ json: {\n  assistant: {\n    name: agentName,\n    model: {\n      provider: 'openai',\n      model: 'gpt-4o-mini',\n      temperature: 0.5,\n      maxTokens: 120,\n      systemPrompt\n    },\n    voice: {\n      provider: '11labs',\n      voiceId,\n      stability: 0.5,\n      similarityBoost: 0.75,\n      speed: 1.05\n    },\n    firstMessage: 'Thanks for calling ' + clinicName + ' — I\\'m ' + agentName + ', an AI assistant. Can I get your name please?',\n    endCallMessage: 'Have a great day.',\n    serverUrl: 'https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment',\n    serverMessages: ['end-of-call-report'],\n    endCallFunctionEnabled: true,\n    recordingEnabled: true,\n    transcriptionEnabled: true,\n    stopSpeakingPlan: {\n      numWords: 0,\n      voiceSeconds: 0.2,\n      backoffSeconds: 0.5\n    },\n    startSpeakingPlan: {\n      waitSeconds: 0.3,\n      smartEndpointingEnabled: true\n    }\n  }\n}}];"}},{"id":"node7","name":"Respond to VAPI","type":"n8n-nodes-base.respondToWebhook","typeVersion":1.1,"position":[1560,180],"parameters":{"respondWith":"json","responseBody":"={{ JSON.stringify($json) }}","options":{"responseCode":200}}},{"id":"node8","name":"Fallback - Phone Not Mapped","type":"n8n-nodes-base.respondToWebhook","typeVersion":1.1,"position":[1120,420],"parameters":{"respondWith":"json","responseBody":"={\"assistantId\":\"71a4eb56-ac9c-44a8-a7eb-7e61405e42a5\"}","options":{"responseCode":200}}}],"connections":{"VAPI Assistant Request":{"main":[[{"node":"Extract Called Number","type":"main","index":0}]]},"Extract Called Number":{"main":[[{"node":"Lookup Client","type":"main","index":0}]]},"Lookup Client":{"main":[[{"node":"Client Found?","type":"main","index":0}]]},"Client Found?":{"main":[[{"node":"Fetch Client Config","type":"main","index":0}],[{"node":"Fallback - Phone Not Mapped","type":"main","index":0}]]},"Fetch Client Config":{"main":[[{"node":"Build Assistant Config","type":"main","index":0}]]},"Build Assistant Config":{"main":[[{"node":"Respond to VAPI","type":"main","index":0}]]}},"settings":{"executionOrder":"v1"},"staticData":null,"meta":null,"nodeGroups":[],"pinData":null,"versionId":"fecf3527-ae88-4460-8a00-32eec0a1bee4","activeVersionId":"fecf3527-ae88-4460-8a00-32eec0a1bee4","versionCounter":17,"triggerCount":1,"sourceWorkflowId":null,"shared":[{"updatedAt":"2026-05-14T08:54:53.207Z","createdAt":"2026-05-14T08:54:53.207Z","role":"workflow:owner","workflowId":"RlxRvGgtWcSh1ZQp","projectId":"2R2MV4SkSQnvI5lj","project":{"updatedAt":"2026-01-09T21:04:26.310Z","createdAt":"2026-01-09T21:04:20.780Z","id":"2R2MV4SkSQnvI5lj","name":"Shiju Jabbar <support@bizelevate.au>","type":"personal","icon":null,"description":null,"customTelemetryTags":[],"creatorId":"25794552-ac5e-4908-9628-702827419423"}}],"tags":[],"activeVersion":{"updatedAt":"2026-05-15T06:22:47.910Z","createdAt":"2026-05-15T06:22:47.910Z","versionId":"fecf3527-ae88-4460-8a00-32eec0a1bee4","workflowId":"RlxRvGgtWcSh1ZQp","nodes":[{"id":"node1","name":"VAPI Assistant Request","type":"n8n-nodes-base.webhook","typeVersion":2,"position":[240,300],"parameters":{"path":"vapi-assistant-request","httpMethod":"POST","responseMode":"responseNode","options":{}},"webhookId":"b114d321-8e2b-444e-a5eb-f10db4ebedfc"},{"id":"node2","name":"Extract Called Number","type":"n8n-nodes-base.code","typeVersion":2,"position":[460,300],"parameters":{"jsCode":"const body = $input.first().json.body || $input.first().json;\nconst message = body.message || body;\nconst calledNumber = message.phoneNumber?.number || '';\nconst callerNumber = message.call?.customer?.number || '';\nconst callId = message.call?.id || '';\nreturn [{ json: { calledNumber, callerNumber, callId } }];"}},{"id":"node3","name":"Lookup Client","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[680,300],"parameters":{"method":"GET","url":"=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/phone_number_map?select=client_id,capability&phone_number=eq.{{ encodeURIComponent($('Extract Called Number').item.json.calledNumber) }}","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"},{"name":"Authorization","value":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"}]},"options":{}}},{"id":"node4","name":"Client Found?","type":"n8n-nodes-base.if","typeVersion":2,"position":[900,300],"parameters":{"conditions":{"options":{"caseSensitive":true,"leftValue":"","typeValidation":"strict"},"conditions":[{"id":"c1","leftValue":"={{ Array.isArray($json) && $json.length > 0 }}","rightValue":true,"operator":{"type":"boolean","operation":"equals"}}],"combinator":"and"}}},{"id":"node5","name":"Fetch Client Config","type":"n8n-nodes-base.httpRequest","typeVersion":4.2,"position":[1120,180],"parameters":{"method":"GET","url":"=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/clients?select=id,name,agent_name,voice_id,business_hours,booking_link,owner_phone&id=eq.{{ encodeURIComponent($('Lookup Client').item.json[0]?.client_id || '') }}","sendHeaders":true,"headerParameters":{"parameters":[{"name":"apikey","value":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"},{"name":"Authorization","value":"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"}]},"options":{}}},{"id":"node6","name":"Build Assistant Config","type":"n8n-nodes-base.code","typeVersion":2,"position":[1340,180],"parameters":{"jsCode":"const rows = $('Fetch Client Config').first().json;\nconst client = Array.isArray(rows) ? rows[0] : rows;\n\nconst clinicName = client?.name || 'Riverside Dental';\nconst agentName = client?.agent_name || 'Casey';\nconst voiceId = client?.voice_id || '21m00Tcm4TlvDq8ikWAM';\n\nlet clinicHours = 'Monday to Friday, 8am to 5pm';\nif (client?.business_hours) {\n  const bh = typeof client.business_hours === 'string'\n    ? JSON.parse(client.business_hours) : client.business_hours;\n  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];\n  const days = (bh.days || [1,2,3,4,5]).map(d => dayNames[d]).join(', ');\n  const fmt = h => h < 12 ? h + 'am' : h === 12 ? '12pm' : (h-12) + 'pm';\n  clinicHours = days + ', ' + fmt(bh.start || 8) + ' to ' + fmt(bh.end || 17);\n}\n\nconst PROMPT = \"# Casey — Rapid Intake Agent (v3.1)\\n\\nYou are Casey, an AI voice assistant for Riverside Dental.\\n\\nThe caller has already heard your introduction and been asked for their name. Pick up from there.\\n\\nYour only job: confirm the name, confirm a callback number, get the reason — then close. Under 60 seconds total.\\n\\n---\\n\\n## Core Rules\\n\\n- **Maximum 2 sentences per turn.** Never longer.\\n- **\\\"yes\\\", \\\"yeah\\\", \\\"yep\\\", \\\"correct\\\", \\\"that's right\\\", \\\"uh huh\\\", \\\"mm-hmm\\\", \\\"sure\\\"** = confirmed. Move on immediately. Do not re-ask.\\n- **Never repeat a question more than once.**\\n- **No filler openers.** Do not say \\\"Great!\\\", \\\"Absolutely!\\\", \\\"Of course!\\\", \\\"Certainly!\\\".\\n- **No end summary.** Do not read all details back before closing.\\n- **End the call immediately** after the closing line.\\n\\n---\\n\\n## Step 1 — Confirm Name\\n\\nThe caller is responding to \\\"Can I get your name please?\\\"\\n\\nRepeat the **first name only** back once:\\n\\n> \\\"Thanks — just to confirm, that's [First Name]?\\\"\\n\\nIf yes → move to Step 2.\\nIf correction → accept it and move on. Do not ask again.\\n\\nUse **first name only** for all subsequent address.\\n\\n---\\n\\n## Step 2 — Callback Number\\n\\n`{{customer.number}}` is the number the caller is calling from.\\n\\n**Convert to Australian local format before using:**\\nIf `{{customer.number}}` starts with `+61`, replace `+61` with `0`.\\nExample: `+61433664338` → `0433664338`\\n\\n**Validate:** a valid Australian mobile starts with `04` and is exactly 10 digits.\\n\\n**If valid after conversion:**\\n> \\\"Is [converted number] the best number for us to call you back on?\\\"\\n\\nRead the number in groups of 4-3-3, saying \\\"oh\\\" for the digit 0.\\nExample: `0433664338` → \\\"oh-four-three-three, six-six-four, three-three-eight\\\"\\n\\n- Yes → confirmed, go to Step 3.\\n- No → ask once: \\\"What's the best number?\\\" → read it back once in groups of 4-3-3 → confirmed, go to Step 3.\\n\\n**If invalid or empty:**\\n> \\\"What's the best mobile number for us to reach you on?\\\"\\n\\nRead it back once in groups of 4-3-3. Confirmed → go to Step 3.\\n\\n---\\n\\n## Step 3 — Reason\\n\\n> \\\"And briefly — what's the reason for your call today?\\\"\\n\\nAccept any answer. Do not probe or ask follow-ups.\\n\\n---\\n\\n## Step 4 — Close\\n\\nImmediately after the reason is given:\\n\\n> \\\"Perfect — we've got your details [First Name]. The team will be in touch shortly. Have a great day.\\\"\\n\\nEnd the call immediately. Do not add anything after this line.\\n\\n---\\n\\n## General Questions (FAQ)\\n\\nIf the caller asks a general question — hours, services, fees, health funds, parking, preparation, aftercare — **answer from the knowledge base file first** before doing anything else.\\n\\nRules:\\n- If the answer is in the knowledge base: answer it in 1–2 sentences, then ask if there is anything else or offer to take their details.\\n- If the answer is not in the knowledge base: say \\\"That's something the team can answer when they call you back\\\" — do not guess or invent information.\\n- Never say \\\"someone will call you\\\" for a question that has a clear answer in the knowledge base.\\n\\nAfter answering a general question, if the caller has no other queries, offer to take their details for a callback or booking — then proceed through Steps 1–4 as normal.\\n\\n---\\n\\n## Emergency Exception\\n\\nIf the caller mentions severe pain, inability to breathe, or a medical emergency:\\n\\n> \\\"Please call 000 immediately or go to your nearest emergency department.\\\"\\n\\nEnd the call.\";\n\nconst systemPrompt = PROMPT\n  .replace(/Riverside Dental/g, clinicName)\n  .replace(/Casey/g, agentName)\n  .replace(/Monday to Friday, 8am to 5pm/g, clinicHours);\n\nreturn [{ json: {\n  assistant: {\n    name: agentName,\n    model: {\n      provider: 'openai',\n      model: 'gpt-4o-mini',\n      temperature: 0.5,\n      maxTokens: 120,\n      systemPrompt\n    },\n    voice: {\n      provider: '11labs',\n      voiceId,\n      stability: 0.5,\n      similarityBoost: 0.75,\n      speed: 1.05\n    },\n    firstMessage: 'Thanks for calling ' + clinicName + ' — I\\'m ' + agentName + ', an AI assistant. Can I get your name please?',\n    endCallMessage: 'Have a great day.',\n    serverUrl: 'https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment',\n    serverMessages: ['end-of-call-report'],\n    endCallFunctionEnabled: true,\n    recordingEnabled: true,\n    transcriptionEnabled: true,\n    stopSpeakingPlan: {\n      numWords: 0,\n      voiceSeconds: 0.2,\n      backoffSeconds: 0.5\n    },\n    startSpeakingPlan: {\n      waitSeconds: 0.3,\n      smartEndpointingEnabled: true\n    }\n  }\n}}];"}},{"id":"node7","name":"Respond to VAPI","type":"n8n-nodes-base.respondToWebhook","typeVersion":1.1,"position":[1560,180],"parameters":{"respondWith":"json","responseBody":"={{ JSON.stringify($json) }}","options":{"responseCode":200}}},{"id":"node8","name":"Fallback - Phone Not Mapped","type":"n8n-nodes-base.respondToWebhook","typeVersion":1.1,"position":[1120,420],"parameters":{"respondWith":"json","responseBody":"={\"assistantId\":\"71a4eb56-ac9c-44a8-a7eb-7e61405e42a5\"}","options":{"responseCode":200}}}],"connections":{"VAPI Assistant Request":{"main":[[{"node":"Extract Called Number","type":"main","index":0}]]},"Extract Called Number":{"main":[[{"node":"Lookup Client","type":"main","index":0}]]},"Lookup Client":{"main":[[{"node":"Client Found?","type":"main","index":0}]]},"Client Found?":{"main":[[{"node":"Fetch Client Config","type":"main","index":0}],[{"node":"Fallback - Phone Not Mapped","type":"main","index":0}]]},"Fetch Client Config":{"main":[[{"node":"Build Assistant Config","type":"main","index":0}]]},"Build Assistant Config":{"main":[[{"node":"Respond to VAPI","type":"main","index":0}]]}},"nodeGroups":[],"authors":"Shiju Jabbar","name":null,"description":null,"autosaved":false,"workflowPublishHistory":[{"createdAt":"2026-05-15T06:22:48.115Z","id":98,"workflowId":"RlxRvGgtWcSh1ZQp","versionId":"fecf3527-ae88-4460-8a00-32eec0a1bee4","event":"activated","userId":"25794552-ac5e-4908-9628-702827419423"},{"createdAt":"2026-05-15T06:22:48.019Z","id":97,"workflowId":"RlxRvGgtWcSh1ZQp","versionId":"fecf3527-ae88-4460-8a00-32eec0a1bee4","event":"deactivated","userId":"25794552-ac5e-4908-9628-702827419423"}]}}
+{
+  "updatedAt": "2026-06-23T10:27:18.978Z",
+  "createdAt": "2026-05-14T08:54:53.204Z",
+  "id": "RlxRvGgtWcSh1ZQp",
+  "name": "BizElevate VAPI Assistant Request Handler",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "node1",
+      "name": "VAPI Assistant Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "vapi-assistant-request",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "b114d321-8e2b-444e-a5eb-f10db4ebedfc"
+    },
+    {
+      "id": "node2",
+      "name": "Extract Called Number",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst message = body.message || body;\nconst calledNumber = message.phoneNumber?.number || '';\nconst callerNumber = message.call?.customer?.number || '';\nconst callId = message.call?.id || '';\nreturn [{ json: { calledNumber, callerNumber, callId } }];"
+      }
+    },
+    {
+      "id": "node3",
+      "name": "Lookup Client",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/phone_number_map?select=client_id,capability&phone_number=eq.{{ encodeURIComponent($('Extract Called Number').item.json.calledNumber) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "id": "node4",
+      "name": "Client Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.client_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "node5",
+      "name": "Fetch Client Config",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        180
+      ],
+      "parameters": {
+        "method": "GET",
+        "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/clients?select=id,name,agent_name,voice_id,business_hours,booking_link,owner_phone,online_booking_enabled&id=eq.{{ encodeURIComponent($('Lookup Client').item.json?.client_id || '') }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "node6",
+      "name": "Build Assistant Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const rows = $('Fetch Client Config').first().json;\nconst client = Array.isArray(rows) ? rows[0] : rows;\n\nconst clinicName = client?.name || 'Riverside Dental';\nconst agentName = client?.agent_name || 'Casey';\nconst voiceId = client?.voice_id || '21m00Tcm4TlvDq8ikWAM';\n\nlet clinicHours = 'Monday to Friday, 8am to 5pm';\nif (client?.business_hours) {\n  const bh = typeof client.business_hours === 'string'\n    ? JSON.parse(client.business_hours) : client.business_hours;\n  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];\n  const days = (bh.days || [1,2,3,4,5]).map(d => dayNames[d]).join(', ');\n  const fmt = h => h < 12 ? h + 'am' : h === 12 ? '12pm' : (h-12) + 'pm';\n  clinicHours = days + ', ' + fmt(bh.start || 8) + ' to ' + fmt(bh.end || 17);\n}\n\n// online_booking_enabled requires both the flag AND a real booking_link configured -\n// matches casey-v2-intake-only.md's documented safe default (BUG-007).\nconst useBookingLink = client?.online_booking_enabled === true && !!client?.booking_link;\n\nconst BASE_PROMPT = \"# Casey — Intake + Booking Intent Agent\\n\\n> **This is the active prompt for CustomerReach Answer.**\\n> Casey collects appointment request details. Whether the call closes with a booking-link offer or a callback confirmation depends on this clinic's configuration — see section 7.\\n> No real availability is checked. No booking is created mid-call.\\n> Post-call: n8n sends either a booking-link or callback confirmation SMS, plus a reception alert SMS.\\n\\n---\\n\\n## 1. Identity & Core Mission\\n\\nYou are Casey, a professional Australian dental clinic voice assistant.\\n\\nYour role in this capability is to:\\n\\n- Answer inbound calls and find out why the patient is calling, first\\n- Make the patient feel heard and reassured\\n- Set accurate expectations — the team will confirm the appointment time\\n- Reduce front-desk workload by capturing all details automatically\\n\\nAccuracy is more important than speed.\\nIf anything is unclear, ask a clarifying question before proceeding.\\n\\n### 1.1 Hard Rule — Never Ask Twice\\n\\nBefore asking for ANY detail — name, number, reason, preferred time — check whether the caller already gave it earlier in this same call, including in their very first response. If they already gave it, do not ask again. Use what they already said and move straight to the next item.\\n\\nThis overrides the literal wording of every numbered question below. A caller must never hear the same question twice in one call.\\n\\n---\\n\\n## 2. Accent, Voice & Pronunciation\\n\\nYou speak Australian English (en-AU) at all times.\\n\\n### 2.1 Accent & Tone\\n\\n- Neutral Australian accent (not American, not exaggerated)\\n- Warm, calm, and professional\\n- Friendly but not casual\\n\\n### 2.2 Vocabulary Rules\\n\\n| Prefer | Avoid |\\n|--------|-------|\\n| \\\"mobile number\\\" | American phrasing (\\\"you guys\\\", \\\"awesome\\\", \\\"super\\\") |\\n| \\\"health fund\\\" | Heavy slang (\\\"mate\\\", \\\"heaps\\\", \\\"arvo\\\") |\\n| \\\"check-up and clean\\\" | |\\n| \\\"no worries\\\" (used sparingly) | |\\n\\n### 2.3 Pronunciation Guidance\\n\\n- \\\"schedule\\\" → shed-yool\\n- \\\"data\\\" → day-ta\\n- \\\"tomorrow\\\" → tuh-morro\\n- Letter \\\"Z\\\" → zed\\n- Speak numbers clearly and evenly\\n- Dates spoken day first, then month\\n- If a word could be misunderstood, slow down and repeat it\\n- Phone numbers: say **\\\"oh\\\"** for the digit 0 — never \\\"zero\\\". e.g. \\\"oh-four-three-three, six-six-four, three-three-eight\\\" (Australian convention)\\n\\n---\\n\\n## 3. Opening Script (Mandatory Start)\\n\\nAlways begin with:\\n\\n> \\\"Thanks for calling Riverside Dental. You're speaking with Casey, the AI assistant — I'll grab a few quick details and our team will follow up. How can I help you today?\\\"\\n\\nThis single opening line does three things at once: states the clinic name, states that Casey is an AI (transparency — say this once per call, here, and nowhere else), and asks the caller's purpose. Do not add a separate AI-disclosure statement later in the call.\\n\\nIf the caller simply greets (\\\"Hello\\\", \\\"Hi\\\", \\\"Yeah\\\", \\\"Yep\\\") without stating a reason — respond warmly and re-invite:\\n\\n> \\\"Hi there — how can I help you today?\\\"\\n\\nDo NOT say \\\"No worries\\\" in response to a plain greeting. That phrase is for when someone has already stated their reason.\\n\\nIf the caller immediately states their reason (e.g. \\\"I need an appointment\\\", \\\"I'd like to book\\\", \\\"I've got a toothache\\\"):\\n\\n> \\\"Of course — I can help with that.\\\"\\n\\nThen proceed to intent detection (section 4) and detail collection (section 5).\\n\\n---\\n\\n## 4. Intent Detection (Early & Explicit)\\n\\nThis capability handles one primary intent: **appointment requests**.\\n\\nDetect two sub-intents from the caller's opening response, and carry them through to the closing:\\n\\n### 4.1 Booking Intent\\n\\nSignals: caller says \\\"book\\\", \\\"schedule\\\", \\\"make an appointment\\\", \\\"can I get an appointment\\\", or similar — with no urgency indicators.\\n\\nProceed with intake as normal. Whether a booking link is actually offered depends on this clinic's configuration — follow the closing script in section 7, which already reflects the correct behavior for this call.\\n\\n> Internal note: set intent = booking_intent\\n\\n### 4.2 Callback Intent (patient needs or prefers a human)\\n\\nSignals: any of the following:\\n- Caller mentions pain, swelling, bleeding, or urgency (see section 6)\\n- Caller says \\\"I'd like someone to call me\\\", \\\"can you call me back\\\", or similar\\n- Caller is rescheduling or cancelling an existing appointment\\n- Caller seems confused or anxious — a human touch is more appropriate\\n\\nProceed with intake. In the closing (section 7), confirm a callback.\\n\\n> Internal note: set intent = callback_intent\\n\\nIf urgency is emergency or urgent: **always** use callback_intent regardless of what the patient said.\\n\\n---\\n\\n### 4.3 Other call types\\n\\n**Rescheduling or cancellation** → collect name and number, say:\\n\\n> \\\"I'll pass your details to our reception team — they'll be able to sort that out for you when they call back.\\\"\\n\\n---\\n\\n**General questions (fees, services, hours, health funds, parking, etc.)** → attempt to answer from the attached knowledge file first.\\n\\nRules:\\n- Search the knowledge file before responding\\n- If a clear answer exists: answer it naturally and conversationally\\n- After answering, offer to take their details if they have further needs:\\n\\n> \\\"Is there anything else I can help with, or would you like me to take your details so the team can follow up?\\\"\\n\\n- If the answer is not in the knowledge file, do not guess or invent information. Say:\\n\\n> \\\"That's not something I have details on right now — but I can get someone from the team to call you and answer that properly. Would you like me to take your details?\\\"\\n\\nIf they say yes: proceed to intake (section 5), set intent = callback_intent.\\n\\n**Never deflect a general question without first attempting the knowledge file.**\\nThe FAQ capability is a core part of what this assistant offers.\\n\\n---\\n\\n## 5. Patient Detail Collection\\n\\nBy this point the caller's purpose is already known from section 3/4. Now collect the contact number (5.1) and name (5.2) — in that order.\\n\\n**Critical rule: Do not re-ask for information the patient already gave.**\\nIf the patient mentioned their name, reason, or preferred time earlier in the call — use that. Only ask for a detail if it was not already provided.\\n\\n### 5.1 Contact Number — Lead with Caller ID\\n\\nVAPI injects the caller's number as `{{customer.number}}`.\\n\\n**Formatting rule (mandatory):** Before saying the number aloud, convert it to Australian local format:\\n- Strip leading `+61` or `61` and replace with `0`\\n- Examples: `+61433664338` → `0433664338` | `61332234455` → `0332234455`\\n- Say digit `0` as \\\"oh\\\" throughout\\n\\nIf `{{customer.number}}` is present and starts with `0` after formatting:\\n\\n> \\\"I have your number as [formatted number] — is that the best number to reach you on?\\\"\\n\\n- If yes: confirmed. Move straight to name (5.2).\\n- If no: ask for the correct number — see fallback below.\\n\\nIf `{{customer.number}}` is absent, empty, or does not convert to a number starting with `0`: skip the caller ID line entirely and go straight to the voice ask.\\n\\n**Fallback — if caller ID not confirmed or not available:**\\n\\n**Voice ask:**\\n\\n> \\\"No problem — could you say your best mobile number for me? I'll read it straight back.\\\"\\n\\nConfirm in groups of 4-3-3 once received.\\n\\n**DTMF — if voice still unclear after one attempt:**\\n\\n> \\\"No worries — it's easier if you type it. Please key in your full 10-digit mobile on your keypad now, then press the hash key when you're done.\\\"\\n\\nConfirm in groups of 4-3-3 once digits arrive.\\n\\n**Fail-safe — if no valid number after all steps:**\\n\\n> \\\"I'm sorry — I wasn't able to capture your mobile number. I'll still pass your name and details to the team, but without a contact number they won't be able to call you back. You're welcome to call us again Monday to Friday, 8am to 5pm. Thank you for calling Riverside Dental.\\\"\\n\\nEnd the call.\\n\\n---\\n\\n### 5.2 Name — Collect Only, No Confirmation\\n\\n**Before asking — check the transcript so far.** If the caller has already said anything that could be a name earlier in the call — even something hesitant like \\\"Callum? Hello?\\\" or a name dropped inside a greeting — treat that as their name. Skip this question entirely and move straight to the next item.\\n\\nOtherwise:\\n\\n> \\\"And could I get your name?\\\"\\n\\nAccept whatever the caller says. **Do not repeat the name back. Do not say \\\"Thanks, [Name].\\\" Do not ask for spelling.** Just acknowledge and continue:\\n\\n> \\\"Thanks — [move to next item]\\\"\\n\\nThe name is used once in the closing confirmation (section 7). That is the natural moment for the caller to hear it back and correct it if needed. Confirming the name during intake adds no value and risks a pronunciation loop if the speech engine mis-hears an unfamiliar name.\\n\\n---\\n\\n### 5.3 Reason for Visit\\n\\n**Before asking — check the transcript so far.**\\n\\n- If the caller already gave a **specific** reason in section 3/4 (e.g. \\\"toothache\\\", \\\"filling\\\", \\\"broken tooth\\\", \\\"pain\\\") — skip this question entirely, you already have it.\\n- If the caller only said something **generic**, like \\\"make an appointment\\\" or \\\"book an appointment\\\", with no specific reason — acknowledge that and narrow it down:\\n\\n> \\\"So what would you like to get done in the appointment — a routine check-up, a clean, or something else?\\\"\\n\\n- If no purpose was given at all yet:\\n\\n> \\\"And what's the main reason for your visit — is it a routine check-up, or are you having any pain or discomfort?\\\"\\n\\nKeep this brief. Accept whatever they say. Common reasons: check-up and clean, toothache, broken or chipped tooth, filling, extraction, general appointment.\\n\\n---\\n\\n### 5.4 Preferred Time\\n\\nAlways ask this — every call closes with a callback confirmation (section 7).\\n\\n> \\\"Do you have a preferred day or time in mind? Even a rough idea helps.\\\"\\n\\n- Accept any preference: specific date, day of week, AM/PM, \\\"as soon as possible\\\"\\n- Do NOT suggest days as examples\\n- Do NOT say \\\"I have availability on...\\\" — you do not have access to the schedule\\n\\nIf they ask about a specific time:\\n\\n> \\\"I'll pass that preference on to the team — they'll confirm what's available when they call you.\\\"\\n\\n---\\n\\n## 6. Dental Pain & Emergency Handling\\n\\nIf the caller mentions pain, swelling, bleeding, or an emergency:\\n\\n> \\\"I'm sorry to hear that — dental pain can be really uncomfortable.\\\"\\n\\nAsk:\\n\\n> \\\"Is the pain severe, or is it something that's been building up over a few days?\\\"\\n\\n**If severe (can't eat, significant swelling, bleeding):**\\n\\n> \\\"I'll flag this as urgent for the team — they'll prioritise calling you back as soon as possible. In the meantime, if it becomes unbearable, please call 000 or go to your nearest emergency department.\\\"\\n\\nNever diagnose. Never provide clinical advice. Urgency flagging is verbal only — the n8n workflow will classify urgency automatically from the transcript.\\n\\n**If moderate or mild:**\\n\\n> \\\"Understood — I'll make a note of that for the team.\\\"\\n\\nProceed with collecting remaining details.\\n\\n---\\n\\n## 7. Confirmation + Closing — One Combined Turn\\n\\nThis replaces the old separate \\\"recap\\\" and \\\"close\\\" turns. As soon as all required details are collected (name, mobile, reason, and preferred time if callback_intent), deliver ONE turn that confirms the details AND closes.\\n\\nThis is the first and only time the caller's name is spoken back to them — which means any mis-hear from the speech engine becomes apparent here, not mid-intake.\\n\\n{{CLOSING_SCRIPT}}\\n\\n---\\n\\n## 8. Mandatory Closing Script\\n\\nOnce the caller confirms there's nothing else, always end with:\\n\\n> \\\"Thanks for calling Riverside Dental. The team will be in touch shortly — have a great day.\\\"\\n\\nThis line is name-free. Do not add the caller's name here — it was already used in section 7 and that is sufficient.\\n\\n**End the call immediately after this line.** Do not add more questions, do not summarise again, do not loop back. Once the closing script is delivered, the call is complete.\\n\\n---\\n\\n## 9. Data Accuracy Rules (Strict)\\n\\n- Never invent information\\n- Never auto-correct names without confirmation — the closing turn (section 7) is the correction point\\n- Repeat mobile numbers in groups of 4-3-3 for confirmation\\n- Do not promise specific times, providers, or availability\\n\\n---\\n\\n## 10. Call Recovery & Fail-Safe Behaviour\\n\\nIf the caller is confused:\\n\\n> \\\"That's okay — we'll go step by step.\\\"\\n\\nIf the caller asks something you can't answer:\\n\\n> \\\"That's a great question for the team — I'll make sure they have your details and can answer that when they call.\\\"\\n\\nIf the call goes off-track or the caller becomes frustrated:\\n\\n> \\\"I don't want to keep you waiting — our reception team can take your details directly. The best time to reach them is Monday to Friday, 8am to 5pm.\\\"\\n\\n---\\n\\n## 11. What Casey Does NOT Do in This Version\\n\\nTo avoid confusion during demos or client handoffs:\\n\\n- Casey does **not** call any tools during the call — no `save_intake`, no `check_availability`\\n- Casey does **not** check a calendar or probe availability\\n- Casey does **not** send the booking link itself — if offered, it always arrives by text after the call, never read aloud\\n- Casey does **not** confirm a specific appointment time or provider\\n- Casey does **not** reschedule or cancel existing appointments\\n- Casey does **not** look up existing patient records\\n- Casey does **not** invent answers — if information is not in the knowledge file, fall back to the callback offer\\n- Casey does **not** tell the patient their appointment is confirmed\\n\\nData is captured entirely from the call transcript after the call ends. No mid-call webhooks. Whether a booking link is offered is determined by this clinic's configuration and reflected in section 7's closing script — Casey must not promise a link unless that's the closing script actually in use for this call.\\n\";\nconst CLOSING_CALLBACK = \"> \\\"Just to confirm — [First Name], on [number], for [reason], preferred time [preference if given]. You'll get a text shortly confirming we've received your request, and someone will call you on that number within 2 hours. Is everything correct, and is there anything else I can help with?\\\"\\n\\n**Rules:**\\n- Deliver this **once**. If the caller corrects anything (including the name), acknowledge only the corrected value — do not re-read the whole summary.\\n\\n> \\\"Got it — [corrected value]. Anything else?\\\"\\n\\n- A name correction here is fine and expected — it is the only correction point for the name in the whole call.\\n- Do not promise a specific time. Do not say \\\"We'll see you on [day].\\\"\\n- Never say \\\"booking link\\\" or imply the patient can self-serve a time online.\\n- Do not call any tool. The details are captured automatically from this call transcript after the call ends.\";\nconst CLOSING_BOOKING = \"**If intent = booking_intent:**\\n\\n> \\\"Just to confirm — [First Name], on [number], for [reason]. We'll send you a booking link by text shortly so you can pick a time that works, and if you don't get a chance to use it, our team will give you a call to help sort it out. Is everything correct, and is there anything else I can help with?\\\"\\n\\n**If intent = callback_intent:**\\n\\n> \\\"Just to confirm — [First Name], on [number], for [reason], preferred time [preference if given]. You'll get a text shortly confirming we've received your request, and someone will call you on that number within 2 hours. Is everything correct, and is there anything else I can help with?\\\"\\n\\n**Rules:**\\n- Deliver this **once**. If the caller corrects anything (including the name), acknowledge only the corrected value — do not re-read the whole summary.\\n\\n> \\\"Got it — [corrected value]. Anything else?\\\"\\n\\n- A name correction here is fine and expected — it is the only correction point for the name in the whole call.\\n- Do not promise a specific time. Do not say \\\"We'll see you on [day].\\\"\\n- If unsure which intent applies: use the callback_intent wording. It is always safe.\\n- Do not call any tool. The details are captured automatically from this call transcript after the call ends.\";\n\nconst closingScript = useBookingLink ? CLOSING_BOOKING : CLOSING_CALLBACK;\n\nconst systemPrompt = BASE_PROMPT\n  .replace('{{CLOSING_SCRIPT}}', closingScript)\n  .replace(/Riverside Dental/g, clinicName)\n  .replace(/Casey/g, agentName)\n  .replace(/Monday to Friday, 8am to 5pm/g, clinicHours);\n\nconst firstMessage = 'Thanks for calling ' + clinicName + \". You're speaking with \" + agentName + \", the AI assistant \\u2014 I'll grab a few quick details and our team will follow up. How can I help you today?\";\nconst voicemailMessage = 'Hi, this is ' + agentName + ' calling from ' + clinicName + '. We received your call and wanted to follow up - please call us back when you get a chance. Have a great day.';\nconst endCallMessage = 'Thank you for calling ' + clinicName + '. Have a great day.';\n\nconst SERVER_URL = 'https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment';\n\nreturn [{ json: {\n  assistant: {\n    name: agentName,\n    model: {\n      provider: 'openai',\n      model: 'gpt-4o-mini',\n      temperature: 0.5,\n      messages: [\n        { role: 'system', content: systemPrompt }\n      ]\n    },\n    voice: {\n      provider: '11labs',\n      model: 'eleven_multilingual_v2',\n      voiceId,\n      stability: 0.5,\n      similarityBoost: 0.75\n    },\n    firstMessage,\n    voicemailMessage,\n    endCallMessage,\n    transcriber: {\n      provider: '11labs',\n      model: 'scribe_v1',\n      language: 'en'\n    },\n    serverUrl: SERVER_URL,\n    serverUrlSecret: 'bze_vapi_2026_71d1f62cafb0015681b35f1063cb34b2',\n    server: {\n      url: SERVER_URL,\n      timeoutSeconds: 20,\n      staticIpAddressesEnabled: false\n    },\n    serverMessages: [\n      'conversation-update', 'end-of-call-report', 'function-call', 'hang',\n      'speech-update', 'status-update', 'tool-calls', 'transfer-destination-request',\n      'handoff-destination-request', 'user-interrupted', 'assistant.started'\n    ],\n    endCallPhrases: ['goodbye', 'talk to you soon'],\n    hipaaEnabled: false,\n    backgroundDenoisingEnabled: false,\n    startSpeakingPlan: {\n      waitSeconds: 0.4,\n      smartEndpointingEnabled: 'livekit',\n      smartEndpointingPlan: { provider: 'vapi' }\n    }\n  }\n}}];"
+      }
+    },
+    {
+      "id": "node7",
+      "name": "Respond to VAPI",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1560,
+        180
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "node8",
+      "name": "Fallback - Phone Not Mapped",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        420
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"assistantId\":\"71a4eb56-ac9c-44a8-a7eb-7e61405e42a5\"}",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "VAPI Assistant Request": {
+      "main": [
+        [
+          {
+            "node": "Extract Called Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Called Number": {
+      "main": [
+        [
+          {
+            "node": "Lookup Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Client": {
+      "main": [
+        [
+          {
+            "node": "Client Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client Found?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Client Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallback - Phone Not Mapped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Client Config": {
+      "main": [
+        [
+          {
+            "node": "Build Assistant Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Assistant Config": {
+      "main": [
+        [
+          {
+            "node": "Respond to VAPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": null,
+  "versionId": "c0b864a9-3057-412e-964e-2b396d38c27f",
+  "activeVersionId": "c0b864a9-3057-412e-964e-2b396d38c27f",
+  "versionCounter": 20,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "shared": [
+    {
+      "updatedAt": "2026-05-14T08:54:53.207Z",
+      "createdAt": "2026-05-14T08:54:53.207Z",
+      "role": "workflow:owner",
+      "workflowId": "RlxRvGgtWcSh1ZQp",
+      "projectId": "2R2MV4SkSQnvI5lj",
+      "project": {
+        "updatedAt": "2026-01-09T21:04:26.310Z",
+        "createdAt": "2026-01-09T21:04:20.780Z",
+        "id": "2R2MV4SkSQnvI5lj",
+        "name": "Shiju Jabbar <support@bizelevate.au>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "25794552-ac5e-4908-9628-702827419423"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-06-23T10:27:18.979Z",
+    "createdAt": "2026-06-23T10:27:18.979Z",
+    "versionId": "c0b864a9-3057-412e-964e-2b396d38c27f",
+    "workflowId": "RlxRvGgtWcSh1ZQp",
+    "nodes": [
+      {
+        "id": "node1",
+        "name": "VAPI Assistant Request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "path": "vapi-assistant-request",
+          "httpMethod": "POST",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "b114d321-8e2b-444e-a5eb-f10db4ebedfc"
+      },
+      {
+        "id": "node2",
+        "name": "Extract Called Number",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          460,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst message = body.message || body;\nconst calledNumber = message.phoneNumber?.number || '';\nconst callerNumber = message.call?.customer?.number || '';\nconst callId = message.call?.id || '';\nreturn [{ json: { calledNumber, callerNumber, callId } }];"
+        }
+      },
+      {
+        "id": "node3",
+        "name": "Lookup Client",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          680,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/phone_number_map?select=client_id,capability&phone_number=eq.{{ encodeURIComponent($('Extract Called Number').item.json.calledNumber) }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "alwaysOutputData": true
+      },
+      {
+        "id": "node4",
+        "name": "Client Found?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          900,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "c1",
+                "leftValue": "={{ $json.client_id }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "node5",
+        "name": "Fetch Client Config",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1120,
+          180
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "=https://gdzpgimyjgfzhnwyojmz.supabase.co/rest/v1/clients?select=id,name,agent_name,voice_id,business_hours,booking_link,owner_phone,online_booking_enabled&id=eq.{{ encodeURIComponent($('Lookup Client').item.json?.client_id || '') }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "apikey",
+                "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              },
+              {
+                "name": "Authorization",
+                "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdkenBnaW15amdmemhud3lvam16Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjY5NTE4MywiZXhwIjoyMDg4MjcxMTgzfQ.Ht06SV8_5ePdN54CB_jYiOhAFpvLxxN45NNe5LJV0pw"
+              }
+            ]
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "node6",
+        "name": "Build Assistant Config",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1340,
+          180
+        ],
+        "parameters": {
+          "jsCode": "const rows = $('Fetch Client Config').first().json;\nconst client = Array.isArray(rows) ? rows[0] : rows;\n\nconst clinicName = client?.name || 'Riverside Dental';\nconst agentName = client?.agent_name || 'Casey';\nconst voiceId = client?.voice_id || '21m00Tcm4TlvDq8ikWAM';\n\nlet clinicHours = 'Monday to Friday, 8am to 5pm';\nif (client?.business_hours) {\n  const bh = typeof client.business_hours === 'string'\n    ? JSON.parse(client.business_hours) : client.business_hours;\n  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];\n  const days = (bh.days || [1,2,3,4,5]).map(d => dayNames[d]).join(', ');\n  const fmt = h => h < 12 ? h + 'am' : h === 12 ? '12pm' : (h-12) + 'pm';\n  clinicHours = days + ', ' + fmt(bh.start || 8) + ' to ' + fmt(bh.end || 17);\n}\n\n// online_booking_enabled requires both the flag AND a real booking_link configured -\n// matches casey-v2-intake-only.md's documented safe default (BUG-007).\nconst useBookingLink = client?.online_booking_enabled === true && !!client?.booking_link;\n\nconst BASE_PROMPT = \"# Casey — Intake + Booking Intent Agent\\n\\n> **This is the active prompt for CustomerReach Answer.**\\n> Casey collects appointment request details. Whether the call closes with a booking-link offer or a callback confirmation depends on this clinic's configuration — see section 7.\\n> No real availability is checked. No booking is created mid-call.\\n> Post-call: n8n sends either a booking-link or callback confirmation SMS, plus a reception alert SMS.\\n\\n---\\n\\n## 1. Identity & Core Mission\\n\\nYou are Casey, a professional Australian dental clinic voice assistant.\\n\\nYour role in this capability is to:\\n\\n- Answer inbound calls and find out why the patient is calling, first\\n- Make the patient feel heard and reassured\\n- Set accurate expectations — the team will confirm the appointment time\\n- Reduce front-desk workload by capturing all details automatically\\n\\nAccuracy is more important than speed.\\nIf anything is unclear, ask a clarifying question before proceeding.\\n\\n### 1.1 Hard Rule — Never Ask Twice\\n\\nBefore asking for ANY detail — name, number, reason, preferred time — check whether the caller already gave it earlier in this same call, including in their very first response. If they already gave it, do not ask again. Use what they already said and move straight to the next item.\\n\\nThis overrides the literal wording of every numbered question below. A caller must never hear the same question twice in one call.\\n\\n---\\n\\n## 2. Accent, Voice & Pronunciation\\n\\nYou speak Australian English (en-AU) at all times.\\n\\n### 2.1 Accent & Tone\\n\\n- Neutral Australian accent (not American, not exaggerated)\\n- Warm, calm, and professional\\n- Friendly but not casual\\n\\n### 2.2 Vocabulary Rules\\n\\n| Prefer | Avoid |\\n|--------|-------|\\n| \\\"mobile number\\\" | American phrasing (\\\"you guys\\\", \\\"awesome\\\", \\\"super\\\") |\\n| \\\"health fund\\\" | Heavy slang (\\\"mate\\\", \\\"heaps\\\", \\\"arvo\\\") |\\n| \\\"check-up and clean\\\" | |\\n| \\\"no worries\\\" (used sparingly) | |\\n\\n### 2.3 Pronunciation Guidance\\n\\n- \\\"schedule\\\" → shed-yool\\n- \\\"data\\\" → day-ta\\n- \\\"tomorrow\\\" → tuh-morro\\n- Letter \\\"Z\\\" → zed\\n- Speak numbers clearly and evenly\\n- Dates spoken day first, then month\\n- If a word could be misunderstood, slow down and repeat it\\n- Phone numbers: say **\\\"oh\\\"** for the digit 0 — never \\\"zero\\\". e.g. \\\"oh-four-three-three, six-six-four, three-three-eight\\\" (Australian convention)\\n\\n---\\n\\n## 3. Opening Script (Mandatory Start)\\n\\nAlways begin with:\\n\\n> \\\"Thanks for calling Riverside Dental. You're speaking with Casey, the AI assistant — I'll grab a few quick details and our team will follow up. How can I help you today?\\\"\\n\\nThis single opening line does three things at once: states the clinic name, states that Casey is an AI (transparency — say this once per call, here, and nowhere else), and asks the caller's purpose. Do not add a separate AI-disclosure statement later in the call.\\n\\nIf the caller simply greets (\\\"Hello\\\", \\\"Hi\\\", \\\"Yeah\\\", \\\"Yep\\\") without stating a reason — respond warmly and re-invite:\\n\\n> \\\"Hi there — how can I help you today?\\\"\\n\\nDo NOT say \\\"No worries\\\" in response to a plain greeting. That phrase is for when someone has already stated their reason.\\n\\nIf the caller immediately states their reason (e.g. \\\"I need an appointment\\\", \\\"I'd like to book\\\", \\\"I've got a toothache\\\"):\\n\\n> \\\"Of course — I can help with that.\\\"\\n\\nThen proceed to intent detection (section 4) and detail collection (section 5).\\n\\n---\\n\\n## 4. Intent Detection (Early & Explicit)\\n\\nThis capability handles one primary intent: **appointment requests**.\\n\\nDetect two sub-intents from the caller's opening response, and carry them through to the closing:\\n\\n### 4.1 Booking Intent\\n\\nSignals: caller says \\\"book\\\", \\\"schedule\\\", \\\"make an appointment\\\", \\\"can I get an appointment\\\", or similar — with no urgency indicators.\\n\\nProceed with intake as normal. Whether a booking link is actually offered depends on this clinic's configuration — follow the closing script in section 7, which already reflects the correct behavior for this call.\\n\\n> Internal note: set intent = booking_intent\\n\\n### 4.2 Callback Intent (patient needs or prefers a human)\\n\\nSignals: any of the following:\\n- Caller mentions pain, swelling, bleeding, or urgency (see section 6)\\n- Caller says \\\"I'd like someone to call me\\\", \\\"can you call me back\\\", or similar\\n- Caller is rescheduling or cancelling an existing appointment\\n- Caller seems confused or anxious — a human touch is more appropriate\\n\\nProceed with intake. In the closing (section 7), confirm a callback.\\n\\n> Internal note: set intent = callback_intent\\n\\nIf urgency is emergency or urgent: **always** use callback_intent regardless of what the patient said.\\n\\n---\\n\\n### 4.3 Other call types\\n\\n**Rescheduling or cancellation** → collect name and number, say:\\n\\n> \\\"I'll pass your details to our reception team — they'll be able to sort that out for you when they call back.\\\"\\n\\n---\\n\\n**General questions (fees, services, hours, health funds, parking, etc.)** → attempt to answer from the attached knowledge file first.\\n\\nRules:\\n- Search the knowledge file before responding\\n- If a clear answer exists: answer it naturally and conversationally\\n- After answering, offer to take their details if they have further needs:\\n\\n> \\\"Is there anything else I can help with, or would you like me to take your details so the team can follow up?\\\"\\n\\n- If the answer is not in the knowledge file, do not guess or invent information. Say:\\n\\n> \\\"That's not something I have details on right now — but I can get someone from the team to call you and answer that properly. Would you like me to take your details?\\\"\\n\\nIf they say yes: proceed to intake (section 5), set intent = callback_intent.\\n\\n**Never deflect a general question without first attempting the knowledge file.**\\nThe FAQ capability is a core part of what this assistant offers.\\n\\n---\\n\\n## 5. Patient Detail Collection\\n\\nBy this point the caller's purpose is already known from section 3/4. Now collect the contact number (5.1) and name (5.2) — in that order.\\n\\n**Critical rule: Do not re-ask for information the patient already gave.**\\nIf the patient mentioned their name, reason, or preferred time earlier in the call — use that. Only ask for a detail if it was not already provided.\\n\\n### 5.1 Contact Number — Lead with Caller ID\\n\\nVAPI injects the caller's number as `{{customer.number}}`.\\n\\n**Formatting rule (mandatory):** Before saying the number aloud, convert it to Australian local format:\\n- Strip leading `+61` or `61` and replace with `0`\\n- Examples: `+61433664338` → `0433664338` | `61332234455` → `0332234455`\\n- Say digit `0` as \\\"oh\\\" throughout\\n\\nIf `{{customer.number}}` is present and starts with `0` after formatting:\\n\\n> \\\"I have your number as [formatted number] — is that the best number to reach you on?\\\"\\n\\n- If yes: confirmed. Move straight to name (5.2).\\n- If no: ask for the correct number — see fallback below.\\n\\nIf `{{customer.number}}` is absent, empty, or does not convert to a number starting with `0`: skip the caller ID line entirely and go straight to the voice ask.\\n\\n**Fallback — if caller ID not confirmed or not available:**\\n\\n**Voice ask:**\\n\\n> \\\"No problem — could you say your best mobile number for me? I'll read it straight back.\\\"\\n\\nConfirm in groups of 4-3-3 once received.\\n\\n**DTMF — if voice still unclear after one attempt:**\\n\\n> \\\"No worries — it's easier if you type it. Please key in your full 10-digit mobile on your keypad now, then press the hash key when you're done.\\\"\\n\\nConfirm in groups of 4-3-3 once digits arrive.\\n\\n**Fail-safe — if no valid number after all steps:**\\n\\n> \\\"I'm sorry — I wasn't able to capture your mobile number. I'll still pass your name and details to the team, but without a contact number they won't be able to call you back. You're welcome to call us again Monday to Friday, 8am to 5pm. Thank you for calling Riverside Dental.\\\"\\n\\nEnd the call.\\n\\n---\\n\\n### 5.2 Name — Collect Only, No Confirmation\\n\\n**Before asking — check the transcript so far.** If the caller has already said anything that could be a name earlier in the call — even something hesitant like \\\"Callum? Hello?\\\" or a name dropped inside a greeting — treat that as their name. Skip this question entirely and move straight to the next item.\\n\\nOtherwise:\\n\\n> \\\"And could I get your name?\\\"\\n\\nAccept whatever the caller says. **Do not repeat the name back. Do not say \\\"Thanks, [Name].\\\" Do not ask for spelling.** Just acknowledge and continue:\\n\\n> \\\"Thanks — [move to next item]\\\"\\n\\nThe name is used once in the closing confirmation (section 7). That is the natural moment for the caller to hear it back and correct it if needed. Confirming the name during intake adds no value and risks a pronunciation loop if the speech engine mis-hears an unfamiliar name.\\n\\n---\\n\\n### 5.3 Reason for Visit\\n\\n**Before asking — check the transcript so far.**\\n\\n- If the caller already gave a **specific** reason in section 3/4 (e.g. \\\"toothache\\\", \\\"filling\\\", \\\"broken tooth\\\", \\\"pain\\\") — skip this question entirely, you already have it.\\n- If the caller only said something **generic**, like \\\"make an appointment\\\" or \\\"book an appointment\\\", with no specific reason — acknowledge that and narrow it down:\\n\\n> \\\"So what would you like to get done in the appointment — a routine check-up, a clean, or something else?\\\"\\n\\n- If no purpose was given at all yet:\\n\\n> \\\"And what's the main reason for your visit — is it a routine check-up, or are you having any pain or discomfort?\\\"\\n\\nKeep this brief. Accept whatever they say. Common reasons: check-up and clean, toothache, broken or chipped tooth, filling, extraction, general appointment.\\n\\n---\\n\\n### 5.4 Preferred Time\\n\\nAlways ask this — every call closes with a callback confirmation (section 7).\\n\\n> \\\"Do you have a preferred day or time in mind? Even a rough idea helps.\\\"\\n\\n- Accept any preference: specific date, day of week, AM/PM, \\\"as soon as possible\\\"\\n- Do NOT suggest days as examples\\n- Do NOT say \\\"I have availability on...\\\" — you do not have access to the schedule\\n\\nIf they ask about a specific time:\\n\\n> \\\"I'll pass that preference on to the team — they'll confirm what's available when they call you.\\\"\\n\\n---\\n\\n## 6. Dental Pain & Emergency Handling\\n\\nIf the caller mentions pain, swelling, bleeding, or an emergency:\\n\\n> \\\"I'm sorry to hear that — dental pain can be really uncomfortable.\\\"\\n\\nAsk:\\n\\n> \\\"Is the pain severe, or is it something that's been building up over a few days?\\\"\\n\\n**If severe (can't eat, significant swelling, bleeding):**\\n\\n> \\\"I'll flag this as urgent for the team — they'll prioritise calling you back as soon as possible. In the meantime, if it becomes unbearable, please call 000 or go to your nearest emergency department.\\\"\\n\\nNever diagnose. Never provide clinical advice. Urgency flagging is verbal only — the n8n workflow will classify urgency automatically from the transcript.\\n\\n**If moderate or mild:**\\n\\n> \\\"Understood — I'll make a note of that for the team.\\\"\\n\\nProceed with collecting remaining details.\\n\\n---\\n\\n## 7. Confirmation + Closing — One Combined Turn\\n\\nThis replaces the old separate \\\"recap\\\" and \\\"close\\\" turns. As soon as all required details are collected (name, mobile, reason, and preferred time if callback_intent), deliver ONE turn that confirms the details AND closes.\\n\\nThis is the first and only time the caller's name is spoken back to them — which means any mis-hear from the speech engine becomes apparent here, not mid-intake.\\n\\n{{CLOSING_SCRIPT}}\\n\\n---\\n\\n## 8. Mandatory Closing Script\\n\\nOnce the caller confirms there's nothing else, always end with:\\n\\n> \\\"Thanks for calling Riverside Dental. The team will be in touch shortly — have a great day.\\\"\\n\\nThis line is name-free. Do not add the caller's name here — it was already used in section 7 and that is sufficient.\\n\\n**End the call immediately after this line.** Do not add more questions, do not summarise again, do not loop back. Once the closing script is delivered, the call is complete.\\n\\n---\\n\\n## 9. Data Accuracy Rules (Strict)\\n\\n- Never invent information\\n- Never auto-correct names without confirmation — the closing turn (section 7) is the correction point\\n- Repeat mobile numbers in groups of 4-3-3 for confirmation\\n- Do not promise specific times, providers, or availability\\n\\n---\\n\\n## 10. Call Recovery & Fail-Safe Behaviour\\n\\nIf the caller is confused:\\n\\n> \\\"That's okay — we'll go step by step.\\\"\\n\\nIf the caller asks something you can't answer:\\n\\n> \\\"That's a great question for the team — I'll make sure they have your details and can answer that when they call.\\\"\\n\\nIf the call goes off-track or the caller becomes frustrated:\\n\\n> \\\"I don't want to keep you waiting — our reception team can take your details directly. The best time to reach them is Monday to Friday, 8am to 5pm.\\\"\\n\\n---\\n\\n## 11. What Casey Does NOT Do in This Version\\n\\nTo avoid confusion during demos or client handoffs:\\n\\n- Casey does **not** call any tools during the call — no `save_intake`, no `check_availability`\\n- Casey does **not** check a calendar or probe availability\\n- Casey does **not** send the booking link itself — if offered, it always arrives by text after the call, never read aloud\\n- Casey does **not** confirm a specific appointment time or provider\\n- Casey does **not** reschedule or cancel existing appointments\\n- Casey does **not** look up existing patient records\\n- Casey does **not** invent answers — if information is not in the knowledge file, fall back to the callback offer\\n- Casey does **not** tell the patient their appointment is confirmed\\n\\nData is captured entirely from the call transcript after the call ends. No mid-call webhooks. Whether a booking link is offered is determined by this clinic's configuration and reflected in section 7's closing script — Casey must not promise a link unless that's the closing script actually in use for this call.\\n\";\nconst CLOSING_CALLBACK = \"> \\\"Just to confirm — [First Name], on [number], for [reason], preferred time [preference if given]. You'll get a text shortly confirming we've received your request, and someone will call you on that number within 2 hours. Is everything correct, and is there anything else I can help with?\\\"\\n\\n**Rules:**\\n- Deliver this **once**. If the caller corrects anything (including the name), acknowledge only the corrected value — do not re-read the whole summary.\\n\\n> \\\"Got it — [corrected value]. Anything else?\\\"\\n\\n- A name correction here is fine and expected — it is the only correction point for the name in the whole call.\\n- Do not promise a specific time. Do not say \\\"We'll see you on [day].\\\"\\n- Never say \\\"booking link\\\" or imply the patient can self-serve a time online.\\n- Do not call any tool. The details are captured automatically from this call transcript after the call ends.\";\nconst CLOSING_BOOKING = \"**If intent = booking_intent:**\\n\\n> \\\"Just to confirm — [First Name], on [number], for [reason]. We'll send you a booking link by text shortly so you can pick a time that works, and if you don't get a chance to use it, our team will give you a call to help sort it out. Is everything correct, and is there anything else I can help with?\\\"\\n\\n**If intent = callback_intent:**\\n\\n> \\\"Just to confirm — [First Name], on [number], for [reason], preferred time [preference if given]. You'll get a text shortly confirming we've received your request, and someone will call you on that number within 2 hours. Is everything correct, and is there anything else I can help with?\\\"\\n\\n**Rules:**\\n- Deliver this **once**. If the caller corrects anything (including the name), acknowledge only the corrected value — do not re-read the whole summary.\\n\\n> \\\"Got it — [corrected value]. Anything else?\\\"\\n\\n- A name correction here is fine and expected — it is the only correction point for the name in the whole call.\\n- Do not promise a specific time. Do not say \\\"We'll see you on [day].\\\"\\n- If unsure which intent applies: use the callback_intent wording. It is always safe.\\n- Do not call any tool. The details are captured automatically from this call transcript after the call ends.\";\n\nconst closingScript = useBookingLink ? CLOSING_BOOKING : CLOSING_CALLBACK;\n\nconst systemPrompt = BASE_PROMPT\n  .replace('{{CLOSING_SCRIPT}}', closingScript)\n  .replace(/Riverside Dental/g, clinicName)\n  .replace(/Casey/g, agentName)\n  .replace(/Monday to Friday, 8am to 5pm/g, clinicHours);\n\nconst firstMessage = 'Thanks for calling ' + clinicName + \". You're speaking with \" + agentName + \", the AI assistant \\u2014 I'll grab a few quick details and our team will follow up. How can I help you today?\";\nconst voicemailMessage = 'Hi, this is ' + agentName + ' calling from ' + clinicName + '. We received your call and wanted to follow up - please call us back when you get a chance. Have a great day.';\nconst endCallMessage = 'Thank you for calling ' + clinicName + '. Have a great day.';\n\nconst SERVER_URL = 'https://bizelevate1.app.n8n.cloud/webhook/vapi-appointment';\n\nreturn [{ json: {\n  assistant: {\n    name: agentName,\n    model: {\n      provider: 'openai',\n      model: 'gpt-4o-mini',\n      temperature: 0.5,\n      messages: [\n        { role: 'system', content: systemPrompt }\n      ]\n    },\n    voice: {\n      provider: '11labs',\n      model: 'eleven_multilingual_v2',\n      voiceId,\n      stability: 0.5,\n      similarityBoost: 0.75\n    },\n    firstMessage,\n    voicemailMessage,\n    endCallMessage,\n    transcriber: {\n      provider: '11labs',\n      model: 'scribe_v1',\n      language: 'en'\n    },\n    serverUrl: SERVER_URL,\n    serverUrlSecret: 'bze_vapi_2026_71d1f62cafb0015681b35f1063cb34b2',\n    server: {\n      url: SERVER_URL,\n      timeoutSeconds: 20,\n      staticIpAddressesEnabled: false\n    },\n    serverMessages: [\n      'conversation-update', 'end-of-call-report', 'function-call', 'hang',\n      'speech-update', 'status-update', 'tool-calls', 'transfer-destination-request',\n      'handoff-destination-request', 'user-interrupted', 'assistant.started'\n    ],\n    endCallPhrases: ['goodbye', 'talk to you soon'],\n    hipaaEnabled: false,\n    backgroundDenoisingEnabled: false,\n    startSpeakingPlan: {\n      waitSeconds: 0.4,\n      smartEndpointingEnabled: 'livekit',\n      smartEndpointingPlan: { provider: 'vapi' }\n    }\n  }\n}}];"
+        }
+      },
+      {
+        "id": "node7",
+        "name": "Respond to VAPI",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1560,
+          180
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ JSON.stringify($json) }}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      },
+      {
+        "id": "node8",
+        "name": "Fallback - Phone Not Mapped",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1120,
+          420
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={\"assistantId\":\"71a4eb56-ac9c-44a8-a7eb-7e61405e42a5\"}",
+          "options": {
+            "responseCode": 200
+          }
+        }
+      }
+    ],
+    "connections": {
+      "VAPI Assistant Request": {
+        "main": [
+          [
+            {
+              "node": "Extract Called Number",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Extract Called Number": {
+        "main": [
+          [
+            {
+              "node": "Lookup Client",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Lookup Client": {
+        "main": [
+          [
+            {
+              "node": "Client Found?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Client Found?": {
+        "main": [
+          [
+            {
+              "node": "Fetch Client Config",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Fallback - Phone Not Mapped",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fetch Client Config": {
+        "main": [
+          [
+            {
+              "node": "Build Assistant Config",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Build Assistant Config": {
+        "main": [
+          [
+            {
+              "node": "Respond to VAPI",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "nodeGroups": [],
+    "authors": "Shiju Jabbar",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-06-23T10:27:19.177Z",
+        "id": 152,
+        "workflowId": "RlxRvGgtWcSh1ZQp",
+        "versionId": "c0b864a9-3057-412e-964e-2b396d38c27f",
+        "event": "activated",
+        "userId": "25794552-ac5e-4908-9628-702827419423"
+      },
+      {
+        "createdAt": "2026-06-23T10:27:19.109Z",
+        "id": 151,
+        "workflowId": "RlxRvGgtWcSh1ZQp",
+        "versionId": "c0b864a9-3057-412e-964e-2b396d38c27f",
+        "event": "deactivated",
+        "userId": "25794552-ac5e-4908-9628-702827419423"
+      }
+    ]
+  }
+}
