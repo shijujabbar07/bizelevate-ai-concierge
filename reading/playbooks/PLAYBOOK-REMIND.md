@@ -4,7 +4,7 @@
 **Product Name:** CustomerReach Remind
 **Status:** LIVE — schema + n8n workflows deployed and active. Pending: Twilio webhook config + end-to-end test.
 **Tier:** Growth ($799/mo)
-**Version:** 0.4
+**Version:** 0.5
 
 ---
 
@@ -27,7 +27,7 @@ CustomerReach Remind eliminates this.
 When a staff member adds an appointment to the dashboard, the system automatically schedules two SMS reminders:
 
 - **48 hours before the appointment:** A friendly heads-up. The patient can confirm, cancel, or ignore.
-- **2 hours before the appointment:** A final prompt. If they haven't cancelled by now, they almost certainly attend.
+- **4 hours before the appointment:** A final prompt. If they haven't cancelled by now, they almost certainly attend.
 
 The clinic does nothing after entering the appointment. The reminders fire automatically. If a patient replies to cancel, the cancellation is logged and the slot becomes available to fill.
 
@@ -41,7 +41,7 @@ Every reminder sent, every reply received, every cancellation — all logged to 
 |--------|-------|
 | Receptionist manually calls patients the day before | Zero staff time — reminders fire automatically |
 | No-show rate 8–15% | Industry evidence shows reminders reduce no-shows to 2–5% |
-| Empty slots known at appointment time | Cancellations arrive 48h or 2h early — slot can be refilled |
+| Empty slots known at appointment time | Cancellations arrive 48h or 4h early — slot can be refilled |
 | No record of reminder history | Every sent reminder and reply visible in dashboard |
 | Staff time spent on reminder calls | Staff time freed for higher-value tasks |
 
@@ -85,9 +85,9 @@ Staff adds appointment to dashboard
   ↓
 appointments row created
   ↓
-appointment_reminders rows auto-created (48h + 2h, status=pending)
+appointment_reminders rows auto-created (48h + 4h, status=pending)
   ↓
-n8n Reminder Scheduler runs every 15 minutes
+n8n Reminder Scheduler runs every 4 hours
   ↓
 Queries appointment_reminders WHERE scheduled_for <= now() AND status IN ('pending','scheduled')
   ↓
@@ -110,7 +110,7 @@ n8n Reminder Reply Handler captures reply
 
 The Reminder Scheduler is a **scheduled n8n workflow** — not webhook-triggered.
 
-- **Polling interval:** Every 15 minutes (n8n Schedule Trigger node)
+- **Polling interval:** Every 4 hours (n8n Schedule Trigger node) — was every 15 minutes until 2026-06-23; that interval alone consumed most of the monthly n8n execution quota with no client yet on the Remind tier to use it
 - **Query:** `appointment_reminders` table — rows where `scheduled_for <= now()` and `status IN ('pending', 'scheduled')`
 - **n8n credential:** Supabase service role key (bypasses RLS)
 
@@ -121,11 +121,13 @@ When a staff member creates an appointment via the dashboard, `appointment_remin
 | Reminder | Offset | `scheduled_for` formula |
 |---------|--------|------------------------|
 | 48h reminder | –48 hours | `appointment_datetime - 48h` |
-| 2h reminder | –2 hours | `appointment_datetime - 2h` |
+| 4h reminder | –4 hours | `appointment_datetime - 4h` |
 
-If an appointment is less than 48 hours away when created, the 48h reminder row is inserted with `scheduled_for` in the past — the scheduler will skip it (already past). Only the 2h reminder will fire.
+If an appointment is less than 48 hours away when created, the 48h reminder row is inserted with `scheduled_for` in the past — the scheduler will skip it (already past). Only the 4h reminder will fire.
 
-If an appointment is less than 2 hours away, both reminders are skipped automatically.
+If an appointment is less than 4 hours away, both reminders are skipped automatically.
+
+The 4-hour reminder window was chosen specifically to match the scheduler's 4-hour poll interval — at a 2-hour window, a 4-hour poll could in the worst case fire the reminder up to 2 hours *after* the appointment already happened. Moving the window itself to 4 hours means the worst case is "fires right at the appointment," never after it.
 
 ---
 
@@ -134,17 +136,17 @@ If an appointment is less than 2 hours away, both reminders are skipped automati
 ### Workflow 1: Reminder Scheduler (ID: `wN3cyY7o0kJhk9DS`)
 
 **File:** `appointment-reminders/n8n/workflow-reminder-scheduler.json`
-**Purpose:** Poll for due reminders and fire SMS every 15 minutes.
+**Purpose:** Poll for due reminders and fire SMS every 4 hours.
 
 | # | Node | Type | Purpose |
 |---|------|------|---------|
-| 1 | Schedule Trigger | Schedule | Runs every 15 minutes |
+| 1 | Schedule Trigger | Schedule | Runs every 4 hours |
 | 2 | Fetch Due Reminders | HTTP GET | `appointment_reminders` joined with `appointments` — rows where `scheduled_for <= now()` and `reminder_status IN ('pending','scheduled')` |
 | 3 | Any Due? | IF | Stop if result array is empty |
 | 4 | Split Reminders | Code | Split array into individual items for per-reminder processing |
 | 5 | Fetch Client Config | HTTP GET | `clients` — name, owner_phone, timezone |
 | 6 | Fetch Twilio Number | HTTP GET | `phone_number_map` — Twilio FROM number for this client |
-| 7 | Build SMS | Code | Compose SMS body (48h or 2h tone variant), validate all data |
+| 7 | Build SMS | Code | Compose SMS body (48h or 4h tone variant), validate all data |
 | 8 | Send SMS | HTTP POST | Twilio API — From=clinic number, To=patient mobile |
 | 9 | Mark Sent | HTTP PATCH | `reminder_status='sent'`, `sent_at=now()` on success |
 | 10 | Mark Failed | HTTP PATCH | `reminder_status='failed'`, `failure_reason=error` on Twilio error |
@@ -193,7 +195,7 @@ Reply CONFIRM to confirm or CANCEL to cancel.
 – [ClinicName] Team
 ```
 
-### 2-Hour Reminder
+### 4-Hour Reminder
 
 ```
 Hi [PatientName], just a reminder — your appointment at [ClinicName]
@@ -259,7 +261,7 @@ Both migrations are **live in production**.
 | `id` | UUID (PK) | Auto-generated |
 | `appointment_id` | UUID (FK) | Cascades delete with parent appointment |
 | `client_id` | TEXT | Denormalised for RLS performance |
-| `reminder_type` | TEXT | 48h / 2h |
+| `reminder_type` | TEXT | 48h / 4h (a handful of historical rows from before 2026-06-23 use 2h) |
 | `reminder_channel` | TEXT | sms / email / both (default: sms) |
 | `scheduled_for` | TIMESTAMPTZ | Computed: appointment_datetime - offset |
 | `reminder_status` | TEXT | pending → scheduled → sent / failed / cancelled |
@@ -330,8 +332,8 @@ Workflow already deployed: ID `inmiGyHTCEP3a2hd`. Twilio webhook config is the p
 
 Add a test appointment 3 minutes in the future.
 Confirm:
-- [ ] `appointment_reminders` rows inserted (48h + 2h) — 48h has past `scheduled_for`, 2h has future
-- [ ] Wait for scheduler to fire (up to 15 min) — 2h reminder fires when `scheduled_for <= now()`
+- [ ] `appointment_reminders` rows inserted (48h + 4h) — 48h has past `scheduled_for`, 4h has future
+- [ ] Wait for scheduler to fire (up to 4 hours - trigger manually in n8n for a faster check) — 4h reminder fires when `scheduled_for <= now()`
 - [ ] SMS received on test mobile
 - [ ] `reminder_status` updated to `sent` in Supabase
 - [ ] Reminder badge shows 'Sent' in dashboard
@@ -345,7 +347,7 @@ The dashboard Appointments page (`/reminders` route) is **fully implemented**:
 
 - Staff can create, edit, and cancel appointments
 - Patient name (first + last), mobile, email, appointment datetime, notes, and reminder channel are all captured
-- Each appointment row shows 48h and 2h reminder status badges (pending / scheduled / sent / failed / cancelled)
+- Each appointment row shows 48h and 4h reminder status badges (pending / scheduled / sent / failed / cancelled)
 - Failed reminders highlighted so staff can see what needs attention
 - Active/cancelled/all filter tabs
 - Upcoming/past date range filter
@@ -360,12 +362,12 @@ CustomerReach Remind requires an actual appointment to demo. Use this flow:
 
 **Setup (before the call):**
 1. Add a test appointment via the dashboard — set `appointment_datetime` to 3 minutes from now
-2. Confirm two rows appear in `appointment_reminders` (48h row will have past `scheduled_for`, 2h row will be due shortly)
+2. Confirm two rows appear in `appointment_reminders` (48h row will have past `scheduled_for`, 4h row will be due shortly)
 
 **During the demo:**
 1. *"We've just booked a test appointment for 3 minutes from now."*
 2. Show the Appointments page — the appointment appears with 'Pending' reminder badges
-3. Wait for the 15-minute scheduler to fire (or trigger manually for live demos)
+3. Manually trigger the Reminder Scheduler workflow in n8n (production now polls every 4 hours, not 15 minutes — don't wait for the schedule live on a call, just run it on demand)
 4. Show the SMS arriving on your mobile
 5. *"That just fired automatically. No staff action. The clinic didn't have to do anything after entering the appointment."*
 6. Reply CANCEL — show the cancellation acknowledgement SMS and the appointment status updating to 'Cancelled' in the dashboard
@@ -386,7 +388,7 @@ CustomerReach Remind requires an actual appointment to demo. Use this flow:
 | `appointmentService.ts` | **DONE** | Create, update, cancel, delete, list with reminders joined |
 | TypeScript types | **DONE** | Appointment, AppointmentReminder, ReminderStatus, etc. |
 | Dashboard Appointments page | **DONE** | `/reminders` route — full CRUD + reminder status badges |
-| n8n Reminder Scheduler | **ACTIVE** | Workflow ID: `wN3cyY7o0kJhk9DS` — polls every 15 min |
+| n8n Reminder Scheduler | **ACTIVE** | Workflow ID: `wN3cyY7o0kJhk9DS` — polls every 4 hours (was 15 min until 2026-06-23) |
 | n8n Reminder Reply Handler | **ACTIVE** | Workflow ID: `inmiGyHTCEP3a2hd` — webhook path: `/reminder-sms-reply` |
 | Twilio inbound webhook | **PENDING** | Set each client's number to: `https://bizelevate1.app.n8n.cloud/webhook/reminder-sms-reply` |
 | End-to-end test | **PENDING** | Add test appointment, verify SMS fires, test CANCEL reply |
@@ -428,3 +430,4 @@ CustomerReach Remind is sold as part of the **Growth tier** only. It requires th
 | 0.2 | 2026-03-18 | Migration 014 (patient_surname). n8n Reminder Scheduler and Reply Handler workflows built. Dashboard and service layer confirmed complete. |
 | 0.3 | 2026-03-19 | Full deployment. All schema confirmed live in production. Scheduler (wN3cyY7o0kJhk9DS) and Reply Handler (inmiGyHTCEP3a2hd) deployed and ACTIVE in n8n. Pending: Twilio webhook config + end-to-end test. |
 | 0.4 | 2026-03-21 | Added Section 7: Demo script with pitch numbers. Status note clarified (Operating Truth was stale — Remind workflows are live). |
+| 0.5 | 2026-06-23 | Scheduler interval cut from 15 min to 4 hours — the 15-min poll alone was consuming most of the monthly n8n execution quota with no client yet on the Remind tier. Final reminder changed from 2h to 4h before the appointment, to match the new poll interval and avoid the worst case of a reminder arriving after the appointment already happened (migration 018). |
