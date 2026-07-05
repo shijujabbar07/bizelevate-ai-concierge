@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-06-23T12:05:02.304Z",
+  "updatedAt": "2026-07-05T07:13:25.004Z",
   "createdAt": "2026-03-19T06:29:15.083Z",
   "id": "wN3cyY7o0kJhk9DS",
   "name": "BizElevate Reminder Scheduler",
@@ -370,6 +370,22 @@
         528
       ],
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "run-reminder-scheduler-45f4f2cddc804e06062489e8d9028247",
+        "options": {}
+      },
+      "id": "run-now-manual-trigger",
+      "name": "Run Now (Manual)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        504
+      ],
+      "webhookId": "1c89a5c9-2521-4821-b97b-df1c9f12ebc9"
     }
   ],
   "connections": {
@@ -484,6 +500,22 @@
           }
         ]
       ]
+    },
+    "Run Now (Manual)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Due Reminders",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Overdue Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -493,16 +525,18 @@
   },
   "staticData": {
     "node:Schedule Trigger": {
-      "recurrenceRules": []
+      "recurrenceRules": [
+        16
+      ]
     }
   },
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "a10b5c22-b0f8-44ab-985d-d1e07eecbbae",
-  "activeVersionId": "a10b5c22-b0f8-44ab-985d-d1e07eecbbae",
-  "versionCounter": 23,
-  "triggerCount": 1,
+  "versionId": "1139cb0c-7b0c-4517-a584-90ead7d5cc88",
+  "activeVersionId": "1139cb0c-7b0c-4517-a584-90ead7d5cc88",
+  "versionCounter": 24,
+  "triggerCount": 2,
   "sourceWorkflowId": null,
   "shared": [
     {
@@ -526,9 +560,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-06-23T12:05:02.305Z",
-    "createdAt": "2026-06-23T12:05:02.305Z",
-    "versionId": "a10b5c22-b0f8-44ab-985d-d1e07eecbbae",
+    "updatedAt": "2026-07-05T07:13:25.005Z",
+    "createdAt": "2026-07-05T07:13:25.005Z",
+    "versionId": "1139cb0c-7b0c-4517-a584-90ead7d5cc88",
     "workflowId": "wN3cyY7o0kJhk9DS",
     "nodes": [
       {
@@ -894,6 +928,22 @@
           528
         ],
         "onError": "continueRegularOutput"
+      },
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "run-reminder-scheduler-45f4f2cddc804e06062489e8d9028247",
+          "options": {}
+        },
+        "id": "run-now-manual-trigger",
+        "name": "Run Now (Manual)",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          504
+        ],
+        "webhookId": "1c89a5c9-2521-4821-b97b-df1c9f12ebc9"
       }
     ],
     "connections": {
@@ -1008,6 +1058,22 @@
             }
           ]
         ]
+      },
+      "Run Now (Manual)": {
+        "main": [
+          [
+            {
+              "node": "Fetch Due Reminders",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Fetch Overdue Appointments",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
       }
     },
     "nodeGroups": [],
@@ -1017,11 +1083,19 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-06-23T12:06:53.277Z",
-        "id": 156,
+        "createdAt": "2026-07-05T07:13:25.334Z",
+        "id": 160,
         "workflowId": "wN3cyY7o0kJhk9DS",
-        "versionId": "a10b5c22-b0f8-44ab-985d-d1e07eecbbae",
+        "versionId": "1139cb0c-7b0c-4517-a584-90ead7d5cc88",
         "event": "activated",
+        "userId": "25794552-ac5e-4908-9628-702827419423"
+      },
+      {
+        "createdAt": "2026-07-05T07:13:25.151Z",
+        "id": 159,
+        "workflowId": "wN3cyY7o0kJhk9DS",
+        "versionId": "1139cb0c-7b0c-4517-a584-90ead7d5cc88",
+        "event": "deactivated",
         "userId": "25794552-ac5e-4908-9628-702827419423"
       }
     ]
