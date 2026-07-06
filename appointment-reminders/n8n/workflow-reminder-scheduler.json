@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-05T07:13:25.004Z",
+  "updatedAt": "2026-07-06T07:53:52.837Z",
   "createdAt": "2026-03-19T06:29:15.083Z",
   "id": "wN3cyY7o0kJhk9DS",
   "name": "BizElevate Reminder Scheduler",
@@ -12,8 +12,12 @@
         "rule": {
           "interval": [
             {
-              "field": "hours",
-              "hoursInterval": 4
+              "field": "cronExpression",
+              "expression": "0 7 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 18 * * *"
             }
           ]
         }
@@ -521,7 +525,8 @@
   "settings": {
     "executionOrder": "v1",
     "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
+    "availableInMCP": false,
+    "timezone": "Australia/Sydney"
   },
   "staticData": {
     "node:Schedule Trigger": {
@@ -533,9 +538,9 @@
   "meta": null,
   "nodeGroups": [],
   "pinData": null,
-  "versionId": "1139cb0c-7b0c-4517-a584-90ead7d5cc88",
-  "activeVersionId": "1139cb0c-7b0c-4517-a584-90ead7d5cc88",
-  "versionCounter": 24,
+  "versionId": "f8d18de8-06a9-4c2d-bb14-eae440c5d1c3",
+  "activeVersionId": "f8d18de8-06a9-4c2d-bb14-eae440c5d1c3",
+  "versionCounter": 25,
   "triggerCount": 2,
   "sourceWorkflowId": null,
   "shared": [
@@ -560,9 +565,9 @@
   ],
   "tags": [],
   "activeVersion": {
-    "updatedAt": "2026-07-05T07:13:25.005Z",
-    "createdAt": "2026-07-05T07:13:25.005Z",
-    "versionId": "1139cb0c-7b0c-4517-a584-90ead7d5cc88",
+    "updatedAt": "2026-07-06T07:53:52.839Z",
+    "createdAt": "2026-07-06T07:53:52.839Z",
+    "versionId": "f8d18de8-06a9-4c2d-bb14-eae440c5d1c3",
     "workflowId": "wN3cyY7o0kJhk9DS",
     "nodes": [
       {
@@ -570,8 +575,12 @@
           "rule": {
             "interval": [
               {
-                "field": "hours",
-                "hoursInterval": 4
+                "field": "cronExpression",
+                "expression": "0 7 * * *"
+              },
+              {
+                "field": "cronExpression",
+                "expression": "0 18 * * *"
               }
             ]
           }
@@ -1083,18 +1092,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-05T07:13:25.334Z",
-        "id": 160,
+        "createdAt": "2026-07-06T07:53:53.273Z",
+        "id": 164,
         "workflowId": "wN3cyY7o0kJhk9DS",
-        "versionId": "1139cb0c-7b0c-4517-a584-90ead7d5cc88",
+        "versionId": "f8d18de8-06a9-4c2d-bb14-eae440c5d1c3",
         "event": "activated",
         "userId": "25794552-ac5e-4908-9628-702827419423"
       },
       {
-        "createdAt": "2026-07-05T07:13:25.151Z",
-        "id": 159,
+        "createdAt": "2026-07-06T07:53:53.198Z",
+        "id": 163,
         "workflowId": "wN3cyY7o0kJhk9DS",
-        "versionId": "1139cb0c-7b0c-4517-a584-90ead7d5cc88",
+        "versionId": "f8d18de8-06a9-4c2d-bb14-eae440c5d1c3",
         "event": "deactivated",
         "userId": "25794552-ac5e-4908-9628-702827419423"
       }
