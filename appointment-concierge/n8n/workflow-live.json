@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-07-05T06:58:04.022Z",
+  "updatedAt": "2026-07-06T07:36:52.764Z",
   "createdAt": "2026-02-12T08:59:31.281Z",
   "id": "HKHwb6mpWdvGcR070E8or",
   "name": "BizElevate - Appointment Request Concierge (MCP)",
@@ -929,7 +929,7 @@
             },
             {
               "id": "booking-link-exists",
-              "leftValue": "={{ $('Fetch Client Config').item.json[0]?.booking_link }}",
+              "leftValue": "={{ $('Fetch Client Config').item.json.booking_link }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -938,7 +938,7 @@
             },
             {
               "id": "online-booking-enabled",
-              "leftValue": "={{ $('Fetch Client Config').item.json[0]?.online_booking_enabled }}",
+              "leftValue": "={{ $('Fetch Client Config').item.json.online_booking_enabled }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -1100,7 +1100,7 @@
             },
             {
               "name": "To",
-              "value": "={{ $('Fetch Client Config').item.json[0]?.reception_alert_number || $('Fetch Client Config').item.json[0]?.owner_phone || '' }}"
+              "value": "={{ $('Fetch Client Config').item.json.reception_alert_number || $('Fetch Client Config').item.json.owner_phone || '' }}"
             },
             {
               "name": "Body",
@@ -1142,7 +1142,7 @@
             },
             {
               "name": "To",
-              "value": "={{ $('Fetch Client Config - No Phone').first().json[0]?.reception_alert_number || $('Fetch Client Config - No Phone').first().json[0]?.owner_phone || '' }}"
+              "value": "={{ $('Fetch Client Config - No Phone').first().json.reception_alert_number || $('Fetch Client Config - No Phone').first().json.owner_phone || '' }}"
             },
             {
               "name": "Body",
@@ -1178,7 +1178,7 @@
           "conditions": [
             {
               "id": "reception-alert-enabled",
-              "leftValue": "={{ $('Fetch Client Config').item.json[0]?.reception_alert_enabled }}",
+              "leftValue": "={{ $('Fetch Client Config').item.json.reception_alert_enabled }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -1253,7 +1253,7 @@
           "conditions": [
             {
               "id": "reception-alert-enabled-no-phone",
-              "leftValue": "={{ $('Fetch Client Config - No Phone').first().json[0]?.reception_alert_enabled }}",
+              "leftValue": "={{ $('Fetch Client Config - No Phone').first().json.reception_alert_enabled }}",
               "rightValue": true,
               "operator": {
                 "type": "boolean",
@@ -4851,9 +4851,9 @@
       }
     ]
   },
-  "versionId": "a96f0041-e6df-4404-9af0-3be83398fe4f",
-  "activeVersionId": "a96f0041-e6df-4404-9af0-3be83398fe4f",
-  "versionCounter": 131,
+  "versionId": "601f8f70-2e3f-4b6e-a1ed-dadb8dfaeaa4",
+  "activeVersionId": "601f8f70-2e3f-4b6e-a1ed-dadb8dfaeaa4",
+  "versionCounter": 132,
   "triggerCount": 1,
   "sourceWorkflowId": null,
   "shared": [
@@ -4897,9 +4897,9 @@
     }
   ],
   "activeVersion": {
-    "updatedAt": "2026-07-05T06:58:04.027Z",
-    "createdAt": "2026-07-05T06:58:04.027Z",
-    "versionId": "a96f0041-e6df-4404-9af0-3be83398fe4f",
+    "updatedAt": "2026-07-06T07:36:52.781Z",
+    "createdAt": "2026-07-06T07:36:52.781Z",
+    "versionId": "601f8f70-2e3f-4b6e-a1ed-dadb8dfaeaa4",
     "workflowId": "HKHwb6mpWdvGcR070E8or",
     "nodes": [
       {
@@ -5824,7 +5824,7 @@
               },
               {
                 "id": "booking-link-exists",
-                "leftValue": "={{ $('Fetch Client Config').item.json[0]?.booking_link }}",
+                "leftValue": "={{ $('Fetch Client Config').item.json.booking_link }}",
                 "rightValue": "",
                 "operator": {
                   "type": "string",
@@ -5833,7 +5833,7 @@
               },
               {
                 "id": "online-booking-enabled",
-                "leftValue": "={{ $('Fetch Client Config').item.json[0]?.online_booking_enabled }}",
+                "leftValue": "={{ $('Fetch Client Config').item.json.online_booking_enabled }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -5995,7 +5995,7 @@
               },
               {
                 "name": "To",
-                "value": "={{ $('Fetch Client Config').item.json[0]?.reception_alert_number || $('Fetch Client Config').item.json[0]?.owner_phone || '' }}"
+                "value": "={{ $('Fetch Client Config').item.json.reception_alert_number || $('Fetch Client Config').item.json.owner_phone || '' }}"
               },
               {
                 "name": "Body",
@@ -6037,7 +6037,7 @@
               },
               {
                 "name": "To",
-                "value": "={{ $('Fetch Client Config - No Phone').first().json[0]?.reception_alert_number || $('Fetch Client Config - No Phone').first().json[0]?.owner_phone || '' }}"
+                "value": "={{ $('Fetch Client Config - No Phone').first().json.reception_alert_number || $('Fetch Client Config - No Phone').first().json.owner_phone || '' }}"
               },
               {
                 "name": "Body",
@@ -6073,7 +6073,7 @@
             "conditions": [
               {
                 "id": "reception-alert-enabled",
-                "leftValue": "={{ $('Fetch Client Config').item.json[0]?.reception_alert_enabled }}",
+                "leftValue": "={{ $('Fetch Client Config').item.json.reception_alert_enabled }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -6148,7 +6148,7 @@
             "conditions": [
               {
                 "id": "reception-alert-enabled-no-phone",
-                "leftValue": "={{ $('Fetch Client Config - No Phone').first().json[0]?.reception_alert_enabled }}",
+                "leftValue": "={{ $('Fetch Client Config - No Phone').first().json.reception_alert_enabled }}",
                 "rightValue": true,
                 "operator": {
                   "type": "boolean",
@@ -6571,18 +6571,18 @@
     "autosaved": false,
     "workflowPublishHistory": [
       {
-        "createdAt": "2026-07-05T06:58:04.310Z",
-        "id": 158,
+        "createdAt": "2026-07-06T07:36:53.073Z",
+        "id": 162,
         "workflowId": "HKHwb6mpWdvGcR070E8or",
-        "versionId": "a96f0041-e6df-4404-9af0-3be83398fe4f",
+        "versionId": "601f8f70-2e3f-4b6e-a1ed-dadb8dfaeaa4",
         "event": "activated",
         "userId": "25794552-ac5e-4908-9628-702827419423"
       },
       {
-        "createdAt": "2026-07-05T06:58:04.234Z",
-        "id": 157,
+        "createdAt": "2026-07-06T07:36:52.996Z",
+        "id": 161,
         "workflowId": "HKHwb6mpWdvGcR070E8or",
-        "versionId": "a96f0041-e6df-4404-9af0-3be83398fe4f",
+        "versionId": "601f8f70-2e3f-4b6e-a1ed-dadb8dfaeaa4",
         "event": "deactivated",
         "userId": "25794552-ac5e-4908-9628-702827419423"
       }
